@@ -90,7 +90,7 @@ const App = () => {
   const [marketsInitialView, setMarketsInitialView] = useState(null);
   const [investmentAmount, setInvestmentAmount] = useState(0);
   const [stockCheckout, setStockCheckout] = useState({ security: null, amount: 0 });
-  const creditEnabled = false;
+  const creditEnabled = true;
   const recoveryHandled = useRef(false);
   const { refetch: refetchNotifications } = useNotificationsContext();
   const [showPinLock, setShowPinLock] = useState(false);
