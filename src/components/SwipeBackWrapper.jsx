@@ -1,19 +1,13 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 
-let Haptics = null;
-if (Capacitor.isNativePlatform()) {
-  import('@capacitor/haptics').then(module => {
-    Haptics = module.Haptics;
-  }).catch(() => {});
-}
-
 const triggerHaptic = async () => {
-  if (Haptics && Capacitor.isNativePlatform()) {
-    try {
-      await Haptics.impact({ style: 'medium' });
-    } catch {}
-  }
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    const haptics = window?.Capacitor?.Plugins?.Haptics;
+    if (!haptics?.impact) return;
+    await haptics.impact({ style: 'medium' });
+  } catch {}
 };
 
 // Detect Android web browser (not native app)

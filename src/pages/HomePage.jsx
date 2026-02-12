@@ -729,7 +729,13 @@ const HomePage = ({
                   </button>
                 ))}
                 <div className="relative flex items-center">
-                  <span className="rounded-full px-3 py-1.5 text-xs font-semibold text-white/30 cursor-default">Credit</span>
+                  <button
+                    type="button"
+                    onClick={() => onOpenCredit && onOpenCredit()}
+                    className="rounded-full px-3 py-1.5 text-xs font-semibold text-white/30"
+                  >
+                    Credit
+                  </button>
                   <span className="rounded-full px-3 py-1.5 text-xs font-semibold text-white/30 cursor-default">Transact</span>
                 </div>
               </div>

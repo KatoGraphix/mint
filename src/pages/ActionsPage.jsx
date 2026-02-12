@@ -4,17 +4,15 @@ import {
   BadgeCheck,
   ChevronRight,
   CheckCircle2,
+  Shield,
+  Wallet,
   FileText,
-  Landmark,
-  UserPlus,
 } from "lucide-react";
 import ActionsSkeleton from "../components/ActionsSkeleton";
 import { useSumsubStatus } from "../lib/useSumsubStatus";
-import { useRequiredActions } from "../lib/useRequiredActions";
 import { supabase } from "../lib/supabase";
 
 const ActionsPage = ({ onBack, onNavigate }) => {
-  const { bankLinked, bankInReview, bankSnapshotExists, loading: actionsLoading } = useRequiredActions();
   const { kycVerified, kycPending, kycNeedsResubmission, loading: kycLoading, rejectLabels } = useSumsubStatus();
   const [onboardingData, setOnboardingData] = useState(null);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
@@ -47,17 +45,9 @@ const ActionsPage = ({ onBack, onNavigate }) => {
     checkOnboarding();
   }, []);
 
-  if (actionsLoading || kycLoading || checkingOnboarding) {
+  if (kycLoading || checkingOnboarding) {
     return <ActionsSkeleton />;
   }
-
-  const getBankStatus = () => {
-    if (bankLinked) return { text: "Verified", style: "bg-green-100 text-green-600" };
-    if (bankInReview) return { text: "In review", style: "bg-blue-100 text-blue-600" };
-    return { text: "Required", style: "bg-slate-100 text-slate-500" };
-  };
-
-  const bankStatus = getBankStatus();
 
   const allOnboardingComplete = kycVerified && onboardingData?.kyc_status === "onboarding_complete";
 
@@ -98,8 +88,6 @@ const ActionsPage = ({ onBack, onNavigate }) => {
 
   const onboardingStatus = getOnboardingStatus();
 
-  const bankActionRequired = !bankSnapshotExists;
-
   const allActions = [
     {
       id: "identity",
@@ -124,35 +112,11 @@ const ActionsPage = ({ onBack, onNavigate }) => {
       navigateTo: "identityCheck",
       disabled: !kycVerified,
     },
-    ...(bankActionRequired
-      ? [
-          {
-            id: "bank-link",
-            title: "Link your primary bank",
-            description: "Connect to enable instant transfers",
-            status: bankStatus.text,
-            statusStyle: bankStatus.style,
-            icon: Landmark,
-            completed: bankLinked,
-            navigateTo: "creditApply",
-          },
-        ]
-      : []),
-    {
-      id: "invite",
-      title: "Invite a friend",
-      description: "Share Mint and earn bonus rewards",
-      status: "Optional",
-      statusStyle: "bg-slate-100 text-slate-500",
-      icon: UserPlus,
-      completed: false,
-      navigateTo: "invite",
-    },
   ];
 
   const outstandingActions = allActions.filter((a) => !a.completed && !a.disabled);
   const completedActions = allActions.filter((a) => a.completed);
-  const allRequiredComplete = allOnboardingComplete && (!bankActionRequired || bankLinked);
+  const allRequiredComplete = allOnboardingComplete;
 
   const handleActionPress = (action) => {
     if (onNavigate && action.navigateTo) {
