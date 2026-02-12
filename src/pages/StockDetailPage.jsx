@@ -1,18 +1,57 @@
-import React, { useState, useEffect } from "react";
-import { ArrowLeft, TrendingUp, TrendingDown } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { ArrowLeft, TrendingUp, TrendingDown, Star, Check } from "lucide-react";
 import { getSecurityBySymbol, getSecurityPrices, normalizePriceSeries } from "../lib/marketData.js";
+import { supabase } from "../lib/supabase.js";
+import { useProfile } from "../lib/useProfile";
 
 const StockDetailPage = ({ security: initialSecurity, onBack, onOpenBuy }) => {
+  const { profile } = useProfile();
   const [selectedPeriod, setSelectedPeriod] = useState("1M");
   const [security, setSecurity] = useState(initialSecurity);
   const [priceHistory, setPriceHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [watchlist, setWatchlist] = useState([]);
+  const [watchlistAnimating, setWatchlistAnimating] = useState(false);
   const periods = ["1W", "1M", "3M", "6M", "YTD", "1Y"];
+
+  useEffect(() => {
+    if (profile?.watchlist && Array.isArray(profile.watchlist)) {
+      setWatchlist(profile.watchlist);
+    }
+  }, [profile]);
+
+  const isWatched = useMemo(() => {
+    return watchlist.includes(initialSecurity?.symbol);
+  }, [watchlist, initialSecurity?.symbol]);
+
+  const toggleWatchlist = async () => {
+    if (!profile?.id || !initialSecurity?.symbol) return;
+
+    const symbol = initialSecurity.symbol;
+    const wasWatched = watchlist.includes(symbol);
+    const newWatchlist = wasWatched
+      ? watchlist.filter((t) => t !== symbol)
+      : [...watchlist, symbol];
+
+    setWatchlist(newWatchlist);
+    setWatchlistAnimating(true);
+    setTimeout(() => setWatchlistAnimating(false), 600);
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ watchlist: newWatchlist })
+      .eq('id', profile.id);
+
+    if (error) {
+      setWatchlist(watchlist);
+      console.error("Watchlist sync failed:", error);
+    }
+  };
 
   console.log("🔍 Initial security prop:", {
     symbol: initialSecurity?.symbol,
     currentPrice: initialSecurity?.currentPrice,
-    changeAbs: initialSecurity?.changeAbs,
+    change_price: initialSecurity?.change_price,
     changePct: initialSecurity?.changePct
   });
 
@@ -26,7 +65,7 @@ const StockDetailPage = ({ security: initialSecurity, onBack, onOpenBuy }) => {
         if (updatedSecurity) {
           console.log("📊 Updated security data:", {
             currentPrice: updatedSecurity.currentPrice,
-            changeAbs: updatedSecurity.changeAbs,
+              change_price: updatedSecurity.change_price,
             changePct: updatedSecurity.changePct
           });
           setSecurity(updatedSecurity);
@@ -63,22 +102,30 @@ const StockDetailPage = ({ security: initialSecurity, onBack, onOpenBuy }) => {
   
   console.log("💰 Display data:", {
     currentPrice: displaySecurity?.currentPrice,
-    changeAbs: displaySecurity?.changeAbs,
+      change_price: displaySecurity?.change_price,
     changePct: displaySecurity?.changePct,
     hasCurrentPrice: displaySecurity?.currentPrice != null,
-    hasChangeAbs: displaySecurity?.changeAbs != null
+      hasChangePrice: displaySecurity?.change_price != null
   });
   
   const currentPrice = displaySecurity?.currentPrice != null 
     ? Number(displaySecurity.currentPrice).toFixed(2)
     : "—";
-  const priceChange = displaySecurity?.changeAbs != null 
-    ? (displaySecurity.changeAbs >= 0 ? '+' : '') + Number(displaySecurity.changeAbs).toFixed(2)
+    // change_price is in cents, convert to Rands
+    const priceChange = displaySecurity?.change_price != null 
+      ? (displaySecurity.change_price >= 0 ? '+' : '') + (Number(displaySecurity.change_price) / 100).toFixed(2)
     : "—";
-  const percentChange = displaySecurity?.changePct != null 
-    ? (displaySecurity.changePct >= 0 ? '+' : '') + Number(displaySecurity.changePct).toFixed(2) + '%'
+  const rawPercentChange = displaySecurity?.change_percentage != null
+    ? Number(displaySecurity.change_percentage)
+    : displaySecurity?.change_percent != null
+      ? Number(displaySecurity.change_percent)
+      : displaySecurity?.changePct != null
+        ? Number(displaySecurity.changePct)
+        : null;
+  const percentChange = rawPercentChange != null
+    ? (rawPercentChange >= 0 ? '+' : '') + rawPercentChange.toFixed(2) + '%'
     : "—";
-  const isPositive = displaySecurity?.changePct != null && displaySecurity.changePct >= 0;
+  const isPositive = rawPercentChange != null && rawPercentChange >= 0;
 
   // Generate chart data from price history - filter out nulls
   const chartData = priceHistory.length > 0 
@@ -123,11 +170,18 @@ const StockDetailPage = ({ security: initialSecurity, onBack, onOpenBuy }) => {
   const hasValidRange = paddedRange > 0 && chartData.length > 1;
 
   const formatTimestamp = () => {
-    if (!security.asOfDate) {
-      return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    // AsOfTime is a text field in format like "16:30" or "2024-01-15 16:30:00"
+    if (displaySecurity?.AsOfTime) {
+      // If it's a full timestamp, extract time
+      if (displaySecurity.AsOfTime.includes(' ')) {
+        return displaySecurity.AsOfTime.split(' ')[1].substring(0, 5);
+      }
+      // If it's just time, use it directly
+      if (displaySecurity.AsOfTime.includes(':')) {
+        return displaySecurity.AsOfTime.substring(0, 5);
+      }
     }
-    const date = new Date(security.asOfDate);
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
   // Helper function to calculate Y position with proper domain
@@ -148,14 +202,27 @@ const StockDetailPage = ({ security: initialSecurity, onBack, onOpenBuy }) => {
     <div className="min-h-screen bg-white pb-[env(safe-area-inset-bottom)] text-slate-900">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white px-4 pb-4 pt-12">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Back"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 active:scale-95"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 active:scale-95"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <button
+            onClick={toggleWatchlist}
+            className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 active:scale-90 ${
+              isWatched ? "bg-yellow-50" : "bg-slate-100"
+            } ${watchlistAnimating ? "scale-125" : "scale-100"}`}
+            aria-label={isWatched ? "Remove from Watchlist" : "Add to Watchlist"}
+          >
+            <Star className={`h-5 w-5 transition-all duration-300 ${
+              isWatched ? "fill-yellow-400 text-yellow-400" : "text-slate-400"
+            } ${watchlistAnimating ? "scale-110" : ""}`} />
+          </button>
+        </div>
 
         <div className="mt-6 flex items-start gap-3">
           {security.logo_url ? (
@@ -192,7 +259,7 @@ const StockDetailPage = ({ security: initialSecurity, onBack, onOpenBuy }) => {
         <div className="mt-6">
           <div className="flex items-baseline gap-2">
             <p className="text-4xl font-bold text-slate-900">{currentPrice}</p>
-            <span className="text-sm text-slate-500">{security.currency || "ZAC"}</span>
+            <span className="text-sm text-slate-500">{security.currency || "ZAR"}</span>
           </div>
           <div className="mt-2 flex items-center gap-2">
             <span className={`text-lg font-semibold ${isPositive ? "text-emerald-600" : "text-red-600"}`}>
@@ -203,10 +270,7 @@ const StockDetailPage = ({ security: initialSecurity, onBack, onOpenBuy }) => {
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            {security.asOfDate 
-              ? `As of ${new Date(security.asOfDate).toLocaleDateString()} at ${formatTimestamp()} GMT+2`
-              : `As of today at ${formatTimestamp()} GMT+2`
-            }
+              As of today at {formatTimestamp()} GMT+2
           </p>
         </div>
       </div>
@@ -260,16 +324,19 @@ const StockDetailPage = ({ security: initialSecurity, onBack, onOpenBuy }) => {
                 </button>
               ))}
             </div>
-            {selectedPeriodReturn != null && (
-              <div className="mt-3">
-                <div className={`text-lg font-semibold ${
-                  selectedPeriodReturn >= 0 ? 'text-emerald-600' : 'text-red-600'
-                }`}>
-                  {selectedPeriodReturn >= 0 ? '+' : ''}{selectedPeriodReturn.toFixed(2)}%
+            {(() => {
+              const periodReturnValue = selectedPeriodReturn != null ? selectedPeriodReturn : (!loading && chartData.length >= 2 ? chartReturn : null);
+              if (periodReturnValue == null) return null;
+              const isPeriodPositive = periodReturnValue >= 0;
+              return (
+                <div className="mt-3 flex items-baseline gap-1.5">
+                  <span className={`text-lg font-bold ${isPeriodPositive ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {isPeriodPositive ? '+' : ''}{periodReturnValue.toFixed(2)}%
+                  </span>
+                  <span className="text-xs text-slate-400">{selectedPeriod} return</span>
                 </div>
-                <p className="mt-0.5 text-xs text-slate-400">in the last {selectedPeriod}</p>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Chart */}
@@ -427,8 +494,27 @@ const StockDetailPage = ({ security: initialSecurity, onBack, onOpenBuy }) => {
           >
             Buy
           </button>
-          <button className="rounded-2xl border-2 border-slate-200 bg-white py-4 font-semibold text-slate-900 transition-all active:scale-95">
-            Add to Watchlist
+          <button
+            onClick={toggleWatchlist}
+            className={`relative overflow-hidden rounded-2xl border-2 py-4 font-semibold transition-all duration-300 active:scale-95 ${
+              isWatched
+                ? "border-yellow-400 bg-yellow-50 text-yellow-700"
+                : "border-slate-200 bg-white text-slate-900"
+            } ${watchlistAnimating ? "scale-95" : ""}`}
+          >
+            <span className={`flex items-center justify-center gap-2 transition-all duration-300 ${watchlistAnimating ? "scale-110" : "scale-100"}`}>
+              {isWatched ? (
+                <>
+                  <Star className={`h-5 w-5 fill-yellow-400 text-yellow-400 ${watchlistAnimating ? "animate-[spin_0.4s_ease-out]" : ""}`} />
+                  Watchlisted
+                </>
+              ) : (
+                <>
+                  <Star className="h-5 w-5" />
+                  Add to Watchlist
+                </>
+              )}
+            </span>
           </button>
         </div>
       </div>

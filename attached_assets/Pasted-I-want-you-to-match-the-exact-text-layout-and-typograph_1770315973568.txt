@@ -1,0 +1,63 @@
+I want you to match the exact text layout and typography hierarchy of this fintech investment dashboard screen. Focus on how the text is positioned and layered, not just the wording.
+
+Top header text layout:
+
+1. Place the greeting “Hello, Johnson” near the top-left, aligned horizontally with the avatar.
+2. The greeting should use a slightly elegant/serif-feeling font style (or a refined font) and be medium sized.
+3. Below the greeting, place the main balance “$24,897.43” on the left, larger and bolder than all other text.
+4. Put a small “eye” visibility icon to the right of the balance, aligned on the same baseline.
+5. Place the label “Account Value” directly under the balance in smaller muted text (secondary color), aligned left.
+
+Tab row layout:
+
+6. Below the account value area, place a row of three pill tabs: “Investment”, “Banking”, “Sales”.
+7. Keep the tabs on a single horizontal line, centered/left-centered under the balance area.
+8. The active tab (“Investment”) should be filled and visually heavier; inactive tabs should be outlined/subtle.
+
+Section title + range toggle layout:
+
+9. Below the tabs, place the section title “Invest” on the left in large text.
+10. Place a small dropdown chevron immediately to the right of “Invest” (tight spacing).
+11. On the right side of the same row, place the time toggles: “W” and “M”.
+12. The “W” toggle should appear inside a circular chip; “M” should look faded/inactive.
+
+Investment value block layout:
+
+13. Under the “Invest” title, place “$4,449.30” on the left in bold, medium-large text.
+14. Directly beneath it, place “(21% Previous Month)” in smaller muted text, aligned left.
+15. Keep this value block clearly separated from the chart line so the chart does not overlap the text.
+
+Chart label layering:
+
+16. Place the tooltip label (e.g., “$8720”) above the peak point of the chart, centered horizontally above the highlighted dot.
+17. The tooltip should be a small rounded pill and must sit on top of all chart elements (highest z-index).
+18. The peak marker dot should sit directly below the tooltip and above the line.
+
+X-axis label layout:
+
+19. Place the day labels (Sat, Sun, Mon, Tue, Wed, Thu) below the chart line in one row.
+20. Labels should be small, widely spaced, and low-contrast (muted).
+21. Highlight the active day (“Tue”) with a soft rounded pill behind the text; other days remain plain text.
+
+Primary CTA layout:
+
+22. Below the axis labels, place a large rounded pill button centered: “View All Investment”.
+23. The button text should be centered and medium weight.
+24. The button background should be subtle with a soft shadow to feel slightly raised.
+
+Bottom action labels layout:
+
+25. At the bottom, place four actions in a row: Buy, Sell, Send, More.
+26. Each action has an icon above and a label below, centered in its own column.
+27. Keep labels small and clean with consistent spacing.
+
+Overall spacing & hierarchy:
+
+28. Use consistent left alignment for all left-side text blocks (greeting, balance, account label, invest title, value).
+29. Maintain generous vertical spacing between sections so the layout feels airy and premium.
+30. Use a clear hierarchy: Balance (largest) → Section title/value (medium) → Labels (small/muted).
+31. Ensure text never looks cramped; keep comfortable padding from screen edges.
+
+Goal:
+
+The final layout must visually match the reference: stacked left-aligned text blocks at the top, tabs below, “Invest” header with right-aligned toggles, value block under it, chart centered with tooltip, subtle x-axis labels, and a large CTA followed by bottom action labels.

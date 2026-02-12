@@ -1,358 +1,461 @@
-import React, { useState, useMemo, useRef } from "react";
-import { Eye, EyeOff, TrendingUp } from "lucide-react";
-import { formatZar } from "../lib/formatCurrency";
-import { Area, ComposedChart, Line, ResponsiveContainer } from "recharts";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Eye, EyeOff, TrendingUp, LayoutGrid, ChevronDown, ChevronUp } from "lucide-react";
+import { Area, ComposedChart, Line, ResponsiveContainer, YAxis } from "recharts";
+import { supabase } from "../lib/supabase";
+import { getStrategyPriceHistory } from "../lib/strategyData";
+import { getStrategyCurrentValue, getStrategyReturnPct } from "../lib/strategyUtils";
+import { useRealtimePrices } from "../lib/useRealtimePrices";
+import Skeleton from "./Skeleton";
 
 const VISIBILITY_STORAGE_KEY = "mintBalanceVisible";
 
-const generateChartData = (baseValue = 100, trend = "up", points = 20) => {
-  const data = [];
-  let value = baseValue;
-  for (let i = 0; i < points; i++) {
-    const change = trend === "up" 
-      ? Math.random() * 6 - 1.5 
-      : Math.random() * 5 - 3;
-    value = Math.max(baseValue * 0.7, value + change);
-    data.push({ x: i, value: Number(value.toFixed(2)) });
-  }
-  return data;
+const formatKMB = (value) => {
+  const num = Number(value);
+  const sign = num < 0 ? "-" : "";
+  const absNum = Math.abs(num);
+  let formatted = absNum;
+  if (absNum >= 1e9) formatted = (absNum / 1e9).toFixed(1) + "b";
+  else if (absNum >= 1e6) formatted = (absNum / 1e6).toFixed(1) + "m";
+  else if (absNum >= 1e3) formatted = (absNum / 1e3).toFixed(1) + "k";
+  else formatted = absNum.toFixed(2);
+  return `${sign}R${formatted}`;
 };
 
-const MiniChart = ({ data, color = "#FFFFFF" }) => {
-  const gradientId = useMemo(() => `gradient-${Math.random().toString(36).substr(2, 9)}`, []);
-  
-  if (!data || data.length === 0) {
-    return <div className="h-full w-full flex items-center justify-center text-white/40 text-xs">No data</div>;
-  }
-  
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity={0.35} />
-            <stop offset="100%" stopColor={color} stopOpacity={0.05} />
-          </linearGradient>
-        </defs>
-        <Area
-          type="monotone"
-          dataKey="value"
-          stroke="transparent"
-          fill={`url(#${gradientId})`}
-        />
-        <Line
-          type="monotone"
-          dataKey="value"
-          stroke={color}
-          strokeWidth={2.5}
-          dot={false}
-        />
-      </ComposedChart>
-    </ResponsiveContainer>
-  );
-};
+const TIMEFRAME_DAYS = { "1m": 45, "3m": 110, "6m": 220 };
 
-const MintLogoWhite = ({ className = "" }) => (
-  <svg viewBox="0 0 1826.64 722.72" className={className}>
-    <g>
-      <path fill="#FFFFFF" d="M1089.47,265.13c25.29,12.34,16.69,50.37-11.45,50.63h0s-512.36,0-512.36,0c-14.73,0-26.67,11.94-26.67,26.67v227.94c0,14.73-11.94,26.67-26.67,26.67H26.67c-14.73,0-26.67-11.94-26.67-26.67v-248.55c0-9.54,5.1-18.36,13.38-23.12L526.75,3.55c7.67-4.41,17.03-4.73,24.99-.85l537.73,262.43Z"/>
-      <path fill="#FFFFFF" d="M737.17,457.58c-25.29-12.34-16.69-50.37,11.45-50.63h0s512.36,0,512.36,0c14.73,0,26.67-11.94,26.67-26.67v-227.94c0-14.73,11.94-26.67,26.67-26.67h485.66c14.73,0,26.67,11.94,26.67,26.67v248.55c0,9.54-5.1,18.36-13.38,23.12l-513.38,295.15c-7.67,4.41-17.03,4.73-24.99.85l-537.73-262.43Z"/>
-    </g>
-  </svg>
-);
+const SwipeableBalanceCard = ({ userId, isBackFacing = true, forceVisible }) => {
+  const [activeTab, setActiveTab] = useState("1m");
+  const [isOpen, setIsOpen] = useState(false);
+  const { lastUpdated, isConnected } = useRealtimePrices();
+  const [showUpdatedText, setShowUpdatedText] = useState(false);
+  const updatedTimerRef = useRef(null);
 
-const MintLogoSilver = ({ className = "" }) => (
-  <svg viewBox="0 0 1826.64 722.72" className={className}>
-    <g opacity="0.12">
-      <path fill="#C0C0C0" d="M1089.47,265.13c25.29,12.34,16.69,50.37-11.45,50.63h0s-512.36,0-512.36,0c-14.73,0-26.67,11.94-26.67,26.67v227.94c0,14.73-11.94,26.67-26.67,26.67H26.67c-14.73,0-26.67-11.94-26.67-26.67v-248.55c0-9.54,5.1-18.36,13.38-23.12L526.75,3.55c7.67-4.41,17.03-4.73,24.99-.85l537.73,262.43Z"/>
-      <path fill="#C0C0C0" d="M737.17,457.58c-25.29-12.34-16.69-50.37,11.45-50.63h0s512.36,0,512.36,0c14.73,0,26.67-11.94,26.67-26.67v-227.94c0-14.73,11.94-26.67,26.67-26.67h485.66c14.73,0,26.67,11.94,26.67,26.67v248.55c0,9.54-5.1,18.36-13.38,23.12l-513.38,295.15c-7.67,4.41-17.03,4.73-24.99.85l-537.73-262.43Z"/>
-    </g>
-  </svg>
-);
-
-const CardContent = ({ children, style }) => (
-  <div
-    className="absolute inset-0 rounded-[24px] overflow-hidden"
-    style={{
-      background: "linear-gradient(135deg, #2d1052 0%, #4a1d7a 25%, #6b2fa0 50%, #5a2391 75%, #3d1a6d 100%)",
-      boxShadow: "0 25px 50px -12px rgba(91, 33, 182, 0.5)",
-      backfaceVisibility: "hidden",
-      ...style,
-    }}
-  >
-    <div
-      className="absolute inset-0"
-      style={{
-        backgroundImage: `
-          repeating-linear-gradient(
-            45deg,
-            transparent,
-            transparent 8px,
-            rgba(255,255,255,0.02) 8px,
-            rgba(255,255,255,0.02) 9px
-          ),
-          repeating-linear-gradient(
-            -45deg,
-            transparent,
-            transparent 8px,
-            rgba(255,255,255,0.02) 8px,
-            rgba(255,255,255,0.02) 9px
-          ),
-          repeating-linear-gradient(
-            60deg,
-            transparent,
-            transparent 15px,
-            rgba(255,255,255,0.015) 15px,
-            rgba(255,255,255,0.015) 16px
-          ),
-          repeating-linear-gradient(
-            -60deg,
-            transparent,
-            transparent 15px,
-            rgba(255,255,255,0.015) 15px,
-            rgba(255,255,255,0.015) 16px
-          )
-        `,
-      }}
-    />
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      <MintLogoSilver className="w-52 h-auto" />
-    </div>
-    {children}
-  </div>
-);
-
-const SwipeableBalanceCard = ({
-  amount = 0,
-  totalInvestments = 0,
-  investmentChange = 0,
-  bestPerformingAssets = [],
-  userName = "",
-  onPressMintBalance,
-}) => {
-  const [rotation, setRotation] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [isVisible, setIsVisible] = useState(() => {
-    if (typeof window !== "undefined") {
-      const stored = window.localStorage.getItem(VISIBILITY_STORAGE_KEY);
-      return stored !== "false";
+  useEffect(() => {
+    if (lastUpdated) {
+      setShowUpdatedText(true);
+      if (updatedTimerRef.current) clearTimeout(updatedTimerRef.current);
+      updatedTimerRef.current = setTimeout(() => setShowUpdatedText(false), 3000);
     }
-    return true;
+    return () => {
+      if (updatedTimerRef.current) clearTimeout(updatedTimerRef.current);
+    };
+  }, [lastUpdated]);
+
+  useEffect(() => {
+    if (!isBackFacing) setIsOpen(false);
+  }, [isBackFacing]);
+  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState([]);
+  const [chartLoading, setChartLoading] = useState(false);
+  
+  const [dbData, setDbData] = useState({
+    holdings: [],
+    totalMarketValue: 0, 
+    totalInvested: 0,
+    holdingsCount: 0,
   });
-  const dragStartX = useRef(0);
-  
-  const chartColor = investmentChange >= 0 ? "#10B981" : "#F43F5E";
-  
-  const investmentChartData = useMemo(() => 
-    generateChartData(totalInvestments > 0 ? 100 : 50, investmentChange >= 0 ? "up" : "down"), 
-    [totalInvestments, investmentChange]
-  );
 
-  const toggleVisibility = (e) => {
-    e.stopPropagation();
-    setIsVisible((prev) => {
-      const next = !prev;
-      window.localStorage.setItem(VISIBILITY_STORAGE_KEY, String(next));
-      return next;
-    });
-  };
+  const isVisible = true;
 
-  const formattedAmount = useMemo(() => formatZar(amount), [amount]);
-  const formattedInvestments = useMemo(() => formatZar(totalInvestments), [totalInvestments]);
-  const maskedAmount = "••••••••";
+  useEffect(() => {
+    const loadData = async () => {
+      if (!userId) return;
+      setLoading(true);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-  const bestAsset = bestPerformingAssets.length > 0 ? bestPerformingAssets[0] : null;
-  const investmentCount = bestPerformingAssets.length;
+      const [holdingsRes, strategiesRes] = token
+        ? await Promise.all([
+            fetch('/api/user/holdings', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : { holdings: [] }),
+            fetch('/api/user/strategies', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : { strategies: [] }),
+          ])
+        : [{ holdings: [] }, { strategies: [] }];
 
-  const currentIndex = Math.round(rotation / 180) % 2 === 0 ? 0 : 1;
-  const normalizedIndex = Math.abs(currentIndex);
+      const stockHoldings = holdingsRes.holdings || [];
+      const strategyItems = (strategiesRes.strategies || []).map(s => {
+        const holdingsArr = s.holdings || [];
+        const topLogos = holdingsArr
+          .sort((a, b) => (b.weight || 0) - (a.weight || 0))
+          .slice(0, 3)
+          .map(h => h.logo_url || null)
+          .filter(Boolean);
+        const metrics = s.metrics || {};
+        const investedRands = s.investedAmount || 0;
+        const currentRands = getStrategyCurrentValue(investedRands, metrics);
+        const changePct = getStrategyReturnPct(metrics);
+        const investedCents = investedRands * 100;
+        const currentCents = currentRands * 100;
+        return {
+          symbol: s.shortName || s.name || "Strategy",
+          name: s.name || "Strategy",
+          market_value: currentCents,
+          avg_fill: investedCents,
+          quantity: 1,
+          logo_url: null,
+          security_id: null,
+          isStrategy: true,
+          strategyId: s.id,
+          topLogos: topLogos,
+          changePct: changePct,
+          holdings: holdingsArr,
+        };
+      });
+      const enrichedHoldings = [...stockHoldings, ...strategyItems];
 
-  const handleDragStart = (e) => {
-    if (isAnimating) return;
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    dragStartX.current = clientX;
-  };
+      const mValue = enrichedHoldings.reduce((acc, h) => acc + Number(h.market_value || 0) / 100, 0);
+      const invested = enrichedHoldings.reduce((acc, h) => acc + (Number(h.avg_fill || 0) * Number(h.quantity || 0)) / 100, 0);
 
-  const handleDragEnd = (e) => {
-    if (isAnimating) return;
-    const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-    const diff = dragStartX.current - clientX;
-    const threshold = 50;
-    
-    if (Math.abs(diff) > threshold) {
-      setIsAnimating(true);
-      if (diff > 0) {
-        setRotation(prev => prev - 180);
-      } else {
-        setRotation(prev => prev + 180);
+      setDbData({
+        holdings: enrichedHoldings,
+        totalMarketValue: mValue,
+        totalInvested: invested,
+        holdingsCount: enrichedHoldings.length,
+      });
+      setLoading(false);
+    };
+    loadData();
+  }, [userId, lastUpdated]);
+
+  useEffect(() => {
+    const fetchChartPrices = async () => {
+      if (!userId || dbData.holdings.length === 0) {
+        setChartData([]);
+        return;
       }
-      setTimeout(() => setIsAnimating(false), 700);
-    }
-  };
+      setChartLoading(true);
 
-  const handleDotClick = (idx) => {
-    if (isAnimating) return;
-    const currentCard = normalizedIndex;
-    if (idx !== currentCard) {
-      setIsAnimating(true);
-      if (idx > currentCard) {
-        setRotation(prev => prev - 180);
-      } else {
-        setRotation(prev => prev + 180);
+      const days = TIMEFRAME_DAYS[activeTab] || 45;
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      const cutoffISO = cutoff.toISOString();
+
+      const holdingsToChart = selectedAsset
+        ? [selectedAsset]
+        : dbData.holdings;
+
+      const totalWeight = holdingsToChart.reduce((s, h) => s + Number(h.market_value || 0), 0);
+      if (totalWeight === 0) {
+        setChartData([]);
+        setChartLoading(false);
+        return;
       }
-      setTimeout(() => setIsAnimating(false), 700);
-    }
-  };
 
-  const frontRotation = rotation;
-  const backRotation = rotation + 180;
+      if (selectedAsset?.isStrategy && selectedAsset?.strategyId) {
+        const timeframeMap = { "1m": "1M", "3m": "3M", "6m": "6M" };
+        const tf = timeframeMap[activeTab] || "1M";
+        const priceHistory = await getStrategyPriceHistory(selectedAsset.strategyId, tf);
+        if (priceHistory && priceHistory.length > 0) {
+          const investedValue = Number(selectedAsset.avg_fill || 0) / 100;
+          const firstNav = priceHistory[0].nav;
+          const points = priceHistory.map(p => ({
+            d: p.ts,
+            v: firstNav > 0 ? Number((investedValue * (p.nav / firstNav)).toFixed(2)) : investedValue,
+          }));
+          setChartData(points);
+        } else {
+          setChartData([]);
+        }
+        setChartLoading(false);
+        return;
+      }
 
-  return (
-    <div className="relative select-none">
-      <div
-        className="relative w-full touch-pan-y"
-        style={{ 
-          aspectRatio: "1.7 / 1",
-          perspective: "1000px",
-        }}
-        onTouchStart={handleDragStart}
-        onTouchEnd={handleDragEnd}
-        onMouseDown={handleDragStart}
-        onMouseUp={handleDragEnd}
-      >
-        <CardContent 
-          style={{ 
-            transform: `rotateY(${frontRotation}deg)`,
-            transition: "transform 0.7s ease-out",
-          }}
-        >
-          <div className="relative h-full p-5 flex flex-col">
-            <div className="flex items-start justify-between">
-              <MintLogoWhite className="h-8 w-auto" />
-            </div>
+      const pricePromises = holdingsToChart.map(async (h) => {
+        const secId = h.security_id;
+        if (!secId) return null;
 
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-3xl md:text-4xl font-bold text-white tracking-wider" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-                {isVisible ? formattedAmount : maskedAmount}
-              </p>
-            </div>
+        const { data, error } = await supabase
+          .from("security_prices")
+          .select("ts, close_price")
+          .eq("security_id", secId)
+          .gte("ts", cutoffISO)
+          .order("ts", { ascending: true });
 
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-base md:text-lg uppercase tracking-[0.2em] text-white font-semibold" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", letterSpacing: "0.15em" }}>
-                  {userName || "MINT MEMBER"}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl md:text-3xl font-bold text-white tracking-wider" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontStyle: "italic" }}>
-                  VISA
-                </p>
-                <p className="text-sm md:text-base text-white/90 tracking-widest font-medium" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-                  Mint
-                </p>
-              </div>
+        if (error || !data || data.length === 0) return null;
+
+        return {
+          securityId: secId,
+          weight: Number(h.market_value || 0) / totalWeight,
+          quantity: Number(h.quantity || 1),
+          prices: data.map(p => ({ ts: p.ts.split("T")[0], close: Number(p.close_price) / 100 })),
+        };
+      });
+
+      const allPrices = (await Promise.all(pricePromises)).filter(Boolean);
+      if (allPrices.length === 0) {
+        setChartData([]);
+        setChartLoading(false);
+        return;
+      }
+
+      if (selectedAsset && allPrices.length === 1) {
+        const qty = Number(selectedAsset.quantity || 1);
+        const points = allPrices[0].prices.map(p => ({
+          d: p.ts,
+          v: Number((p.close * qty).toFixed(2)),
+        }));
+        setChartData(points);
+        setChartLoading(false);
+        return;
+      }
+
+      const dateSet = new Set();
+      allPrices.forEach(({ prices }) => prices.forEach(p => dateSet.add(p.ts)));
+      const sortedDates = Array.from(dateSet).sort();
+
+      const basePrices = {};
+      allPrices.forEach(({ securityId, prices }) => {
+        if (prices.length > 0) basePrices[securityId] = prices[0].close;
+      });
+
+      const priceByDate = {};
+      allPrices.forEach(({ securityId, prices }) => {
+        priceByDate[securityId] = {};
+        prices.forEach(p => { priceByDate[securityId][p.ts] = p.close; });
+      });
+
+      const basePortfolioValue = holdingsToChart.reduce((s, h) => s + Number(h.market_value || 0) / 100, 0) || 1;
+
+      const points = [];
+      sortedDates.forEach(dateKey => {
+        let weightedReturn = 0;
+        let usedWeight = 0;
+
+        allPrices.forEach(({ securityId, weight }) => {
+          const current = priceByDate[securityId]?.[dateKey];
+          const base = basePrices[securityId];
+          if (current && base && base !== 0) {
+            const ret = current / base;
+            weightedReturn += ret * weight;
+            usedWeight += weight;
+          }
+        });
+
+        if (usedWeight > 0) {
+          const normalizedReturn = weightedReturn / usedWeight;
+          const portfolioValue = basePortfolioValue * normalizedReturn;
+          points.push({ d: dateKey, v: Number(portfolioValue.toFixed(2)) });
+        }
+      });
+
+      setChartData(points);
+      setChartLoading(false);
+    };
+
+    fetchChartPrices();
+  }, [userId, dbData.holdings, activeTab, selectedAsset, lastUpdated]);
+
+  const displayMarketValue = selectedAsset
+    ? Number(selectedAsset.market_value || 0) / 100
+    : dbData.totalMarketValue;
+  const displayInvested = selectedAsset
+    ? (Number(selectedAsset.avg_fill || 0) * Number(selectedAsset.quantity || 0)) / 100
+    : dbData.totalInvested;
+  const displayReturn = displayMarketValue - displayInvested;
+  const isLoss = displayReturn < 0;
+  const returnPct = displayInvested > 0 ? ((displayReturn / displayInvested) * 100).toFixed(1) : "0.0";
+  const chartColor = isLoss ? "#FB7185" : "#10B981"; 
+
+  const masked = "••••";
+
+  if (loading && userId) return (
+    <div className="w-full aspect-[1.7/1] rounded-[28px] bg-white/5 p-4 flex">
+      <div className="w-[50%] flex flex-col justify-between border-r border-white/5 pr-4">
+        <div className="space-y-3">
+          <div>
+            <Skeleton className="h-2.5 w-20 bg-white/10 mb-2" />
+            <Skeleton className="h-5 w-24 bg-white/20 mb-2" />
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-16 bg-white/10" />
+              <Skeleton className="h-4 w-10 rounded-full bg-white/10" />
             </div>
           </div>
-        </CardContent>
+          <div>
+            <Skeleton className="h-2.5 w-16 bg-white/10 mb-2" />
+            <div className="flex gap-1">
+              <Skeleton className="h-5 w-14 rounded-full bg-white/10" />
+              <Skeleton className="h-5 w-14 rounded-full bg-white/10" />
+              <Skeleton className="h-5 w-10 rounded-full bg-white/10" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="w-[50%] flex flex-col justify-between pl-4">
+        <div className="flex gap-1.5">
+          <Skeleton className="h-5 w-8 rounded-full bg-white/10" />
+          <Skeleton className="h-5 w-8 rounded-full bg-white/10" />
+          <Skeleton className="h-5 w-8 rounded-full bg-white/10" />
+        </div>
+        <div className="flex-1 flex items-end gap-1 py-3">
+          {[40, 55, 35, 65, 50, 70, 45, 60, 75, 55].map((h, i) => (
+            <Skeleton key={i} className="flex-1 rounded-sm bg-white/10" style={{ height: `${h}%` }} />
+          ))}
+        </div>
+        <Skeleton className="h-8 w-full rounded-xl bg-white/10" />
+      </div>
+    </div>
+  );
 
-        <CardContent 
-          style={{ 
-            transform: `rotateY(${backRotation}deg)`,
-            transition: "transform 0.7s ease-out",
-          }}
-        >
-          <div className="relative h-full p-5 flex flex-col">
-            <div className="flex items-start justify-between">
+  const getUpdatedAgoText = () => {
+    if (!lastUpdated) return "";
+    const seconds = Math.round((Date.now() - lastUpdated) / 1000);
+    if (seconds < 5) return "Updated just now";
+    if (seconds < 60) return `Updated ${seconds}s ago`;
+    return `Updated ${Math.round(seconds / 60)}m ago`;
+  };
+
+  return (
+    <div className="relative w-full h-full z-[100]">
+      {isConnected && (
+        <div className="absolute top-2 right-3 z-20 flex items-center gap-1.5">
+          {showUpdatedText && (
+            <span
+              className="text-[8px] text-white/50 font-medium transition-opacity duration-500"
+              style={{ animation: "fadeInOut 3s ease-in-out" }}
+            >
+              {getUpdatedAgoText()}
+            </span>
+          )}
+          <span
+            className="block w-1.5 h-1.5 rounded-full bg-emerald-400"
+            style={{ animation: "pulse-dot 2s ease-in-out infinite" }}
+          />
+          <style>{`
+            @keyframes pulse-dot {
+              0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); }
+              50% { opacity: 0.7; box-shadow: 0 0 0 3px rgba(52, 211, 153, 0); }
+            }
+            @keyframes fadeInOut {
+              0% { opacity: 0; }
+              10% { opacity: 1; }
+              80% { opacity: 1; }
+              100% { opacity: 0; }
+            }
+          `}</style>
+        </div>
+      )}
+      <div className="relative z-10 flex h-full text-white">
+        <div className="w-[50%] p-4 flex flex-col justify-between border-r border-white/5">
+          <div className="space-y-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/50 font-medium mb-1.5">
+                {selectedAsset ? selectedAsset.symbol : "portfolio value"}
+              </p>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-base font-semibold">{isVisible ? formatKMB(displayMarketValue) : masked}</span>
+                <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-[8px] font-medium uppercase text-white/60">
+                  {isVisible ? formatKMB(displayInvested) : masked}(inv)
+                </span>
+              </div>
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-white" />
-                <span className="text-xs uppercase tracking-[0.15em] text-white/80 font-medium" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-                  Total Investments
+                <span className={`text-sm font-semibold ${isLoss ? 'text-rose-400' : 'text-emerald-400'}`}>{isVisible ? formatKMB(displayReturn) : masked}</span>
+                <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-medium uppercase ${isLoss ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                  {isVisible ? `${returnPct}%` : masked}
                 </span>
               </div>
             </div>
-
-            <div className="mt-2">
-              <p className="text-2xl md:text-3xl font-bold text-white tracking-wider" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-                {isVisible ? formattedInvestments : maskedAmount}
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/50 font-medium mb-1.5">
+                holdings ({dbData.holdingsCount})
               </p>
-              <p className="text-sm font-semibold mt-0.5" style={{ color: chartColor, fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-                {investmentChange >= 0 ? "+" : ""}{investmentChange.toFixed(2)}% this month
-              </p>
-            </div>
-
-            <div className="flex-1 mt-2 min-h-[60px]">
-              <MiniChart data={investmentChartData} color={chartColor} />
-            </div>
-
-            <div className="flex items-end justify-between mt-1">
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-white/60 font-medium" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-                  Total Investments
-                </p>
-                <p className="text-lg font-bold text-white" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-                  {investmentCount}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] uppercase tracking-wider text-white/60 font-medium" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-                  Best Performing
-                </p>
-                {bestAsset ? (
-                  <div className="flex items-center justify-end gap-1">
-                    <span className="text-lg font-bold text-white" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-                      {bestAsset.symbol}
-                    </span>
-                    <span className="text-sm font-semibold" style={{ color: chartColor }}>
-                      +{(bestAsset.change || 0).toFixed(1)}%
-                    </span>
-                  </div>
-                ) : (
-                  <p className="text-sm text-white/50">—</p>
-                )}
-              </div>
+              {dbData.holdings.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {dbData.holdings.slice(0, 3).map((h, i) => (
+                    <div key={i} className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/10">
+                      {h.isStrategy && h.topLogos?.length > 0 ? (
+                        <div className="flex -space-x-1">
+                          {h.topLogos.slice(0, 3).map((logo, li) => (
+                            <img key={li} src={logo} className="w-3 h-3 rounded-full object-cover border border-white/20" />
+                          ))}
+                        </div>
+                      ) : h.logo_url ? (
+                        <img src={h.logo_url} className="w-3 h-3 rounded-full object-cover" />
+                      ) : (
+                        <span className="text-[6px] text-white/60">{h.symbol?.substring(0, 2)}</span>
+                      )}
+                      <span className="text-[8px] font-medium text-white/80">{h.isStrategy ? h.symbol : h.symbol?.replace('.JO', '')}</span>
+                    </div>
+                  ))}
+                  {dbData.holdings.length > 3 && (
+                    <span className="text-[8px] text-white/40 self-center">+{dbData.holdings.length - 3}</span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[9px] text-white/40">No holdings yet</p>
+              )}
             </div>
           </div>
-        </CardContent>
+        </div>
 
-        <button
-          type="button"
-          onClick={toggleVisibility}
-          className="absolute top-4 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/70 transition hover:bg-white/20"
-          aria-label={isVisible ? "Hide values" : "Show values"}
-        >
-          {isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-        </button>
+        <div className="w-[50%] p-4 flex flex-col">
+          <div className="flex justify-end mb-2">
+            <div className="flex bg-black/20 p-0.5 rounded-lg border border-white/5">
+              {["1m", "3m", "6m"].map((tab) => (
+                <button key={tab} onClick={() => setActiveTab(tab)} className={`px-3 py-1 text-[10px] font-semibold rounded-md ${activeTab === tab ? "bg-white text-slate-900" : "text-white/50"}`}>{tab.toUpperCase()}</button>
+              ))}
+            </div>
+          </div>
+          <div className="flex-1 min-h-0">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData}>
+                  <YAxis hide domain={['auto', 'auto']} /> 
+                  <Area type="monotone" dataKey="v" stroke="none" fill={chartColor} fillOpacity={0.1} />
+                  <Line type="monotone" dataKey="v" stroke={chartColor} strokeWidth={2} dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                {chartLoading ? (
+                  <div className="flex items-end gap-1 w-full h-full py-2">
+                    {[40, 55, 35, 65, 50, 70, 45, 60, 75, 55, 65, 50].map((h, i) => (
+                      <Skeleton key={i} className="flex-1 rounded-sm bg-white/10" style={{ height: `${h}%` }} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[9px] text-white/30">No chart data</p>
+                )}
+              </div>
+            )}
+          </div>
+          <button onClick={() => setIsOpen(!isOpen)} className="mt-2 flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5">
+            <div className="flex items-center gap-2">
+              <LayoutGrid size={12} className="text-violet-400" />
+              <span className="text-[10px] font-medium text-white/80">{selectedAsset ? selectedAsset.symbol : "All Investments"}</span>
+            </div>
+            {isOpen ? <ChevronUp size={14} className="opacity-50" /> : <ChevronDown size={14} className="opacity-50" />}
+          </button>
+        </div>
       </div>
 
-      <div className="flex justify-center gap-2 mt-3">
-        {[0, 1].map((idx) => (
-          <button
-            key={idx}
-            type="button"
-            onClick={() => handleDotClick(idx)}
-            className={`h-2 rounded-full transition-all duration-300 ${
-              normalizedIndex === idx
-                ? "w-6 bg-white"
-                : "w-2 bg-white/40 hover:bg-white/60"
-            }`}
-            aria-label={`Go to card ${idx + 1}`}
-          />
-        ))}
-      </div>
-
-      {onPressMintBalance && (
-        <button
-          type="button"
-          onClick={onPressMintBalance}
-          className="mt-4 py-2.5 px-5 rounded-lg text-sm font-medium text-white/90 transition-all duration-300 hover:text-white hover:bg-white/10 active:scale-[0.98] mx-auto flex items-center gap-2"
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-          }}
-        >
-          View Investment Breakdown
-        </button>
+      {isOpen && (
+        <div className="absolute bottom-0 right-0 w-[55%] max-h-[70%] bg-black/80 backdrop-blur-md rounded-xl z-[120] overflow-hidden border border-white/10">
+          <div className="py-1 overflow-y-auto max-h-[140px]">
+            <button onClick={() => { setSelectedAsset(null); setIsOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left ${!selectedAsset ? 'bg-white/10' : 'hover:bg-white/5'}`}>
+              <LayoutGrid size={10} className="text-violet-400 shrink-0" />
+              <span className="text-[9px] font-medium text-white/90 truncate">All Investments</span>
+            </button>
+            {dbData.holdings.map((item, idx) => (
+              <button key={idx} onClick={() => { setSelectedAsset(item); setIsOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left ${selectedAsset?.symbol === item.symbol ? 'bg-white/10' : 'hover:bg-white/5'}`}>
+                <div className="w-4 h-4 rounded-full overflow-hidden bg-white/10 shrink-0">
+                  {item.isStrategy && item.topLogos?.length > 0 ? (
+                    <div className="flex -space-x-1 h-full items-center justify-center">
+                      {item.topLogos.slice(0, 2).map((logo, li) => (
+                        <img key={li} src={logo} className="w-3 h-3 rounded-full object-cover border border-white/20" />
+                      ))}
+                    </div>
+                  ) : item.logo_url ? (
+                    <img src={item.logo_url} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="flex items-center justify-center w-full h-full text-[6px] text-white/60">{item.symbol?.substring(0, 2)}</span>
+                  )}
+                </div>
+                <span className="text-[9px] font-medium text-white/90 truncate">{item.symbol}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

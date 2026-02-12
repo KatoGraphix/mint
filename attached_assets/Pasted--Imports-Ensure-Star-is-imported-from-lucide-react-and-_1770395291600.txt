@@ -1,0 +1,74 @@
+(Imports: Ensure Star is imported from lucide-react and supabase is imported from your library folder.
+🛠 Step-by-Step Integration
+1. State & Hook Setup
+Add the state at the top of the component and the useEffect to sync with the user's profile.
+JavaScript
+ 
+Plain Text
+// 1. Initialize Stateconst [watchlist, setWatchlist] = useState([]);
+// 2. Sync with Profile on LoaduseEffect(() => {
+  if (profile?.watchlist && Array.isArray(profile.watchlist)) {
+    setWatchlist(profile.watchlist);
+  }
+}, [profile]);
+ 
+
+
+2. The Toggle Logic
+Paste this function before your return statement. This handles the "Optimistic Update"—updating the UI first and reverting only if the database call fails.
+JavaScript
+ 
+Plain Text
+const toggleWatchlist = async (e, symbol) => {
+  e.stopPropagation(); // Stops the card click from opening detailsif (!profile?.id) return;
+  const isWatched = watchlist.includes(symbol);
+  const newWatchlist = isWatched
+    ? watchlist.filter((t) => t !== symbol)
+    : [...watchlist, symbol];
+  setWatchlist(newWatchlist); // Instant UI updateconst { error } = await supabase
+    .from('profiles')
+    .update({ watchlist: newWatchlist })
+    .eq('id', profile.id);
+  if (error) {
+    setWatchlist(watchlist); // Revert on failureconsole.error("Watchlist sync failed:", error);
+  }
+};
+ 
+
+
+3. Filtering the Data
+Use a useMemo to create a subset of securities that the user is currently watching.
+JavaScript
+ 
+Plain Text
+const watchedSecurities = useMemo(() => {
+  return securities.filter((s) => watchlist.includes(s.symbol));
+}, [securities, watchlist]);
+ 
+
+
+🎨 UI Components
+The Watchlist Horizontal Scroll
+Place this at the top of your "Invest" view content. It will only render if there are items in the watchlist.
+JavaScript
+ 
+Plain Text
+{watchedSecurities.length > 0 && (
+  <section className="mb-6"><h2 className="text-lg font-bold text-slate-900 mb-4">My Watchlist</h2><div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">      {watchedSecurities.map((security) => (        <button key={security.id} className="relative w-64 flex-shrink-0 ...">          {/* Toggle Star */}          <div onClick={(e) => toggleWatchlist(e, security.symbol)} className="absolute top-2 right-2 z-10">
+            <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" /></div>
+          {/* ... Card Content ... */}
+        </button>
+      ))}
+    </div></section>
+)}
+ 
+
+
+The Star Toggle (On General Cards)
+Add this div inside your standard stock buttons.
+JavaScript
+ 
+Plain Text
+<div onClick={(e) => toggleWatchlist(e, security.symbol)} className="absolute top-4 right-4 z-10">
+  <Star className={`h-5 w-5 ${watchlist.includes(security.symbol) ? "fill-yellow-400 text-yellow-400" : "text-slate-200"}`} />
+</div>

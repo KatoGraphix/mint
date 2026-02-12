@@ -1,0 +1,45 @@
+Technical Breakdown: HomePage.jsx Functionality
+This guide maps the specific features of your dashboard to the underlying logic and code blocks within the HomePage.jsx file.
+🔄 Real-Time Synchronization & Updates
+The dashboard is designed to be "reactive," meaning it updates automatically when data changes in your database.
+Implementation Logic: A unified useEffect hook establishes a Supabase Realtime channel named home_realtime_updates.
+Code Reference:
+JavaScript
+ 
+// Lines 116-149useEffect(() => {
+  if (!profile?.id) return;
+  const homeSubscription = supabase
+    .channel('home_realtime_updates')
+    .on('postgres_changes', { ...table: 'investment_goals' ... }, () => fetchGoals()) 
+    .on('postgres_changes', { ...table: 'transactions' ... }, () => {
+      fetchBestAssets(); 
+      fetchFinancialData(); 
+    })
+    // ... updates listeners for required_actions
+🎯 Investment Goals (Fetch, Create, Edit)
+You can view, create, and modify your financial targets directly from the Home Page.
+Fetching Goals: The fetchGoals callback retrieves active goals from the investment_goals table, ordered by creation date.
+CRUD Operations:
+Create: handleCreateGoal inserts a new record with progress_percent initialized to 0.
+Edit/Update: handleUpdateGoal applies changes to the name and target amount for a specific editingGoalId.
+Delete: handleDeleteGoal removes the record after a user confirmation.
+Code Reference: See Lines 89-110 (Fetching) and Lines 177-229 (Action Handlers).
+⚠️ Outstanding Actions & KYC
+This section filters and displays critical tasks like identity verification.
+Logic: The actionsData array maps statuses from useSumsubStatus and useRequiredActions into UI-ready objects with specific styles (e.g., bg-green-100 for verified).
+Filtering: The outstandingActions constant ensures only incomplete, high-priority tasks (like KYC) are shown to the user.
+Code Reference: Lines 237-285.
+📰 News & Market Insights
+The news feed pulls the most recent updates relevant to the South African market and your portfolio.
+Functionality: A dedicated useEffect fetches the top 3 entries from the News_articles table.
+Data Mapping: The UI renders the source, published_at, and title fields.
+Code Reference: Lines 159-174 (Data Fetching) and Lines 447-484 (UI Rendering).
+💊 Navigation & Pill Redirection
+The header includes a navigation "pill" to route users between core app modules.
+Redirection Logic: The buttons use props like onOpenInvest, onOpenCredit, and onOpenInvest("transact") to signal the parent App.jsx to switch views.
+Code Reference: Lines 319-346.
+⚡ Quick Actions & Transaction History
+Quick Actions: A mapped array of buttons (Strategies, Markets, News, Goals) with unique icons and click handlers. (Lines 362-398)
+Transactions: The transactionHistory constant formats the raw data from useFinancialData using the formatAmount and formatDate helpers. (Lines 287-291)
+ 
+ 

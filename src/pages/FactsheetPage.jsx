@@ -2,6 +2,7 @@ import React, { useMemo, useState, useRef, useEffect } from "react";
 import { ArrowLeft, X, Info, Heart } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { formatChangePct, getChangeColor } from "../lib/strategyData.js";
+import { buildHoldingsBySymbol, calculateMinInvestment } from "../lib/strategyUtils";
 import {
   Area,
   Line,
@@ -151,9 +152,9 @@ const FactsheetPage = ({ onBack, strategy, onOpenInvest }) => {
   }, [strategyId, strategySlug]);
 
   const currentStrategy = strategyData || strategy || {
-    name: "AlgoHive Core",
-    tags: ["Balanced", "Low risk", "Automated"],
-    description: "AlgoHive Core targets steady, diversified growth using an automated allocation model that adapts to changing market regimes. It aims to smooth volatility while maintaining consistent participation in upside moves, making it suitable for investors seeking a balanced, long-term portfolio anchor.",
+    name: "",
+    tags: [],
+    description: "",
     holdings: [],
   };
 
@@ -187,7 +188,7 @@ const FactsheetPage = ({ onBack, strategy, onOpenInvest }) => {
 
         const { data, error } = await supabase
           .from("securities")
-          .select("symbol, name, logo_url, security_metrics(r_1d)")
+          .select("symbol, name, logo_url, last_price, security_metrics(r_1d)")
           .in("symbol", tickers);
 
         if (error) throw error;
@@ -821,7 +822,16 @@ const FactsheetPage = ({ onBack, strategy, onOpenInvest }) => {
       <div className="sticky bottom-0 bg-slate-50 px-4 pb-6 pt-2">
         <button
           type="button"
-          onClick={() => onOpenInvest?.(currentStrategy)}
+          onClick={() => {
+            const hMap = buildHoldingsBySymbol(holdingsSecurities);
+            const calcMin = calculateMinInvestment(currentStrategy, hMap);
+            const holdingsWithLogos = (currentStrategy.holdings || []).map(h => {
+              const sym = h.ticker || h.symbol || h;
+              const sec = holdingsSecurities.find(s => s.symbol === sym);
+              return { ...h, logo_url: sec?.logo_url || null };
+            });
+            onOpenInvest?.({ ...currentStrategy, calculatedMinInvestment: calcMin, holdingsWithLogos });
+          }}
           className="w-full rounded-2xl bg-gradient-to-r from-[#111111] via-[#3b1b7a] to-[#5b21b6] py-3 text-sm font-semibold text-white shadow-lg shadow-violet-200/60"
         >
           Invest in {currentStrategy.name}

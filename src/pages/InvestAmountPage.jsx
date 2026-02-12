@@ -2,44 +2,31 @@ import React, { useState } from "react";
 import { ArrowLeft, Info, Plus, Minus } from "lucide-react";
 import { formatCurrency } from "../lib/formatCurrency";
 
-const companyLogos = {
-  AAPL: "https://s3-symbol-logo.tradingview.com/apple--big.svg",
-  MSFT: "https://s3-symbol-logo.tradingview.com/microsoft--big.svg",
-  NVDA: "https://s3-symbol-logo.tradingview.com/nvidia--big.svg",
-  TSLA: "https://s3-symbol-logo.tradingview.com/tesla--big.svg",
-  AMZN: "https://s3-symbol-logo.tradingview.com/amazon--big.svg",
-  KO: "https://s3-symbol-logo.tradingview.com/coca-cola--big.svg",
-  PG: "https://s3-symbol-logo.tradingview.com/procter-gamble--big.svg",
-  V: "https://s3-symbol-logo.tradingview.com/visa--big.svg",
-  JNJ: "https://s3-symbol-logo.tradingview.com/johnson-johnson--big.svg",
-};
-
 const InvestAmountPage = ({ onBack, strategy, onContinue }) => {
   const currentStrategy = strategy || {
-    name: "Strategy",
-    return: "+8.7%",
-    minimum: 2500,
+    name: "",
     tickers: [],
     description: "",
   };
 
-  // Default minimum investment
-  const minimumInvestment = currentStrategy.minimum_investment || 2500;
+  const minimumInvestment = currentStrategy.calculatedMinInvestment || null;
   const currency = currentStrategy.currency || 'R';
   
-  const [amount, setAmount] = useState(minimumInvestment);
+  const [amount, setAmount] = useState(minimumInvestment || 0);
   const [agreementChecked, setAgreementChecked] = useState(false);
 
-  const tickers = currentStrategy.tickers || currentStrategy.holdings?.map(h => h.ticker || h.symbol) || [];
-  const extraHoldings = tickers.length > 3 ? tickers.length - 3 : 0;
+  const holdingsData = currentStrategy.holdingsWithLogos || currentStrategy.holdings || [];
+  const extraHoldings = holdingsData.length > 3 ? holdingsData.length - 3 : 0;
+
+  const step = minimumInvestment || 0;
 
   const handleIncrement = () => {
-    setAmount(amount + minimumInvestment);
+    if (step > 0) setAmount(amount + step);
   };
 
   const handleDecrement = () => {
-    if (amount > minimumInvestment) {
-      setAmount(amount - minimumInvestment);
+    if (step > 0 && amount > step) {
+      setAmount(amount - step);
     }
   };
 
@@ -76,7 +63,7 @@ const InvestAmountPage = ({ onBack, strategy, onContinue }) => {
                 {currentStrategy.description?.split('.')[0] || "Investment strategy"}
               </p>
               <p className="text-xs font-semibold text-slate-600 mt-1">
-                Min. {formatCurrency(minimumInvestment, currency)}
+                {minimumInvestment ? `Min. ${formatCurrency(minimumInvestment, currency)}` : "Calculating..."}
               </p>
             </div>
           </div>
@@ -84,22 +71,30 @@ const InvestAmountPage = ({ onBack, strategy, onContinue }) => {
           {/* Holdings Snapshot with Logos */}
           <div className="flex items-center justify-between pt-3 border-t border-slate-100">
             <div className="flex items-center -space-x-2">
-              {tickers.slice(0, 3).map((ticker) => (
-                <div
-                  key={ticker}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-100 overflow-hidden flex-shrink-0"
-                >
-                  <img
-                    src={companyLogos[ticker] || `https://s3-symbol-logo.tradingview.com/${ticker.toLowerCase()}--big.svg`}
-                    alt={ticker}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      e.target.parentElement.textContent = ticker.charAt(0);
-                    }}
-                  />
-                </div>
-              ))}
+              {holdingsData.slice(0, 3).map((holding) => {
+                const symbol = holding.ticker || holding.symbol || holding;
+                const logoUrl = holding.logo_url;
+                return (
+                  <div
+                    key={symbol}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-100 overflow-hidden flex-shrink-0"
+                  >
+                    {logoUrl ? (
+                      <img
+                        src={logoUrl}
+                        alt={symbol}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                          e.target.parentElement.textContent = symbol.charAt(0);
+                        }}
+                      />
+                    ) : (
+                      <span className="text-[10px] font-bold text-slate-500">{symbol.charAt(0)}</span>
+                    )}
+                  </div>
+                );
+              })}
               {extraHoldings > 0 && (
                 <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-300 text-white text-[10px] font-bold flex-shrink-0">
                   +{extraHoldings}
@@ -117,7 +112,7 @@ const InvestAmountPage = ({ onBack, strategy, onContinue }) => {
               <button
                 type="button"
                 onClick={handleDecrement}
-                disabled={amount <= minimumInvestment}
+                disabled={!minimumInvestment || amount <= minimumInvestment}
                 className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:enabled:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition"
               >
                 <Minus className="h-5 w-5" />

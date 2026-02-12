@@ -1,0 +1,41 @@
+~/workspace$ git fetch origin
+~/workspace$ git log origin/main --oneline
+3fbba21 (origin/main, origin/HEAD) Merge pull request #79 from mihle-matimba/codex/add-charts-to-openstrategies-preview-page
+502291c (origin/codex/add-charts-to-openstrategies-preview-page) Merge remote-tracking branch 'origin/main' into codex/add-charts-to-openstrategies-preview-page
+3554430 Handle change_percent for stock header
+a66b26d Use change_percentage for stock header percent
+567cd04 Fix StockDetailPage to fetch real price data from securities and security_prices
+bfe73df Fix MarketsPage to fetch price data from securities table
+1143045 chore: revert local App.jsx changes to match teammate version
+da3e32f feat: implement SwipeableBalanceCard with isolated RPC data fetching
+851592c feat: add latest news section and fix market navigation redirects
+b107f23 Saving latest changes before rebase
+ca8deac Restore browser history navigation and update server configuration
+e7931f4 (grafted) Remove browser history handling to prevent duplicate page navigation
+5119dac Brand article header as Mint News
+c7b60dc Format strategy min investment in rands
+187c493 Tweak OpenStrategies cards and news labels
+9e19a8d Show openstrategies preview returns
+834f15e Add openstrategies preview chart and holdings
+3e7113a (origin/pwa) Merge pull request #77 from mihle-matimba/feat/markets-factsheet-reapply
+118db1e (origin/feat/markets-factsheet-reapply) Move all-time gain to timeframe tag
+3b23797 Format factsheet returns and calendar
+7dca247 Adjust factsheet chart scaling and baseline
+bff5f7f Hydrate factsheet from strategy analytics
+99309be Add holdings snapshots to strategy cards
+a1c8b7a Update OpenStrategies cards to holdings snapshots
+42a4ce5 Make card flip animation follow finger direction
+5a136d6 Add 3D flip animation that follows swipe direction
+99d228c Improve card swiping animation for a more natural feel
+b0df519 Improve card swiping animation to match user direction
+9fca7f2 Remove the circular background element from the card displays
+a0acee0 Improve card designs and button functionality for better user experience
+170c863 Update card components to add a view breakdown button and improve styling
+8640fc7 Apply a 3D flip animation for card transitions
+bc478d2 Update card design with white text, larger fonts, and new layout
+8a5f85a Restored to 'd14474b307124fcd28c37a5d6172becab02777ee'
+bcfabc1 Update card design to match premium credit card aesthetic
+d14474b Update card design to match user's reference image with gold logo and user name
+c7b3e73 Add swipeable card to home dashboard for balance and investment overview
+945f720 Migrate Sumsub API endpoints to Vercel serverless functions
+:

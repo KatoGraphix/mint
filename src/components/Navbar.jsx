@@ -3,8 +3,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
-  CreditCard,
-  Plus,
+  FileText,
   PieChart,
   MoreHorizontal,
   ArrowUpCircle,
@@ -12,9 +11,10 @@ import {
   TrendingUp,
   HandCoins,
   Gift,
-  X
+  Plus,
+  X,
 } from "lucide-react";
- 
+
 const Navbar = ({ activeTab, setActiveTab, onWithdraw, onShowComingSoon, borrowLocked = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [wheelCenter, setWheelCenter] = useState({ x: 0, y: 0 });
@@ -26,14 +26,14 @@ const Navbar = ({ activeTab, setActiveTab, onWithdraw, onShowComingSoon, borrowL
     Medium: "MEDIUM",
     Heavy: "HEAVY",
   };
- 
+
   const tabs = [
     { id: "home", label: "Home", icon: Home },
-    { id: "credit", label: "Credit", icon: CreditCard },
     { id: "investments", label: "Portfolio", icon: PieChart },
+    { id: "statements", label: "Statements", icon: FileText },
     { id: "more", label: "More", icon: MoreHorizontal },
   ];
- 
+
   const transactActions = [
     { id: "withdraw", label: "Withdraw", icon: ArrowUpCircle, angle: -180 },
     { id: "payLoan", label: "Pay", icon: Wallet, angle: -135 },
@@ -41,7 +41,7 @@ const Navbar = ({ activeTab, setActiveTab, onWithdraw, onShowComingSoon, borrowL
     { id: "credit", label: "Borrow", icon: HandCoins, angle: -45, disabled: borrowLocked },
     { id: "rewards", label: "Rewards", icon: Gift, angle: 0 },
   ];
- 
+
   const triggerHaptic = async (style) => {
     try {
       const haptics = window?.Capacitor?.Plugins?.Haptics;
@@ -74,20 +74,17 @@ const Navbar = ({ activeTab, setActiveTab, onWithdraw, onShowComingSoon, borrowL
   };
 
   useLayoutEffect(() => {
-    // Update immediately on mount
     updateLayout();
     updateNavbarHeight();
-    
-    // Ensure navbar height is set before any painting
+
     if (navRef.current) {
       const height = navRef.current.offsetHeight;
       document.documentElement.style.setProperty("--navbar-height", `${height}px`);
     }
-    
+
     window.addEventListener("resize", updateLayout);
     window.addEventListener("resize", updateNavbarHeight);
     window.addEventListener("orientationchange", updateNavbarHeight);
-    
     return () => {
       window.removeEventListener("resize", updateLayout);
       window.removeEventListener("resize", updateNavbarHeight);
@@ -98,8 +95,7 @@ const Navbar = ({ activeTab, setActiveTab, onWithdraw, onShowComingSoon, borrowL
   useLayoutEffect(() => {
     updateNavbarHeight();
   }, [isOpen]);
-  
-  // Ensure navbar height persists after app reopen
+
   useLayoutEffect(() => {
     const interval = setTimeout(() => {
       if (navRef.current) {
@@ -109,10 +105,9 @@ const Navbar = ({ activeTab, setActiveTab, onWithdraw, onShowComingSoon, borrowL
     }, 100);
     return () => clearTimeout(interval);
   }, []);
- 
+
   return (
     <>
-      {/* 1-2. Backdrop Blur + Rotating Menu Items */}
       {createPortal(
         <div className="fixed inset-0 z-[10000] pointer-events-none">
           <AnimatePresence>
@@ -139,7 +134,7 @@ const Navbar = ({ activeTab, setActiveTab, onWithdraw, onShowComingSoon, borrowL
                   type: "spring",
                   stiffness: 120,
                   damping: 18,
-                  duration: 0.45
+                  duration: 0.45,
                 }}
                 className="fixed pointer-events-none"
                 style={{
@@ -212,59 +207,63 @@ const Navbar = ({ activeTab, setActiveTab, onWithdraw, onShowComingSoon, borrowL
               bottom: "calc(1rem + env(safe-area-inset-bottom) + 29px)",
               height: 0,
               pointerEvents: "none",
-              zIndex: 10001
+              zIndex: 10001,
             }}
           >
             <div style={{ pointerEvents: "auto" }}>
-            <button
-              onClick={() => {
-                updateLayout();
-                const newOpenState = !isOpen;
-                setIsOpen(newOpenState);
-                triggerHaptic(newOpenState ? ImpactStyle.Heavy : ImpactStyle.Light);
-              }}
-              className={`pointer-events-auto flex h-16 w-16 -translate-y-1/2 items-center justify-center rounded-full shadow-2xl transition-all active:scale-90 ${
-                isOpen ? "bg-white text-[#31005e]" : "bg-black text-white"
-              }`}
-              style={{ marginTop: "-29px" }}
-            >
-              <div className="relative h-10 w-10 flex items-center justify-center overflow-hidden">
-                <AnimatePresence mode="wait">
-                  {!isOpen ? (
-                    <motion.div
-                      key="plus-icon"
-                      initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.5 }}
-                      className="flex h-full w-full items-center justify-center"
-                    >
-                      <Plus size={32} strokeWidth={2.5} />
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="close"
-                      initial={{ rotate: -90, opacity: 0 }}
-                      animate={{ rotate: 0, opacity: 1 }}
-                      exit={{ rotate: 90, opacity: 0 }}
-                      className="flex h-full w-full items-center justify-center"
-                    >
-                      <X size={32} strokeWidth={3} className="text-[#31005e]" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </button>
+              <button
+                onClick={() => {
+                  updateLayout();
+                  const newOpenState = !isOpen;
+                  setIsOpen(newOpenState);
+                  triggerHaptic(newOpenState ? ImpactStyle.Heavy : ImpactStyle.Light);
+                }}
+                className={`pointer-events-auto flex h-16 w-16 -translate-y-1/2 items-center justify-center rounded-full shadow-2xl transition-all active:scale-90 ${
+                  isOpen ? "bg-white text-[#31005e]" : "bg-black text-white"
+                }`}
+                style={{ marginTop: "-29px" }}
+              >
+                <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden">
+                  <AnimatePresence mode="wait">
+                    {!isOpen ? (
+                      <motion.div
+                        key="plus-icon"
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.5 }}
+                        className="flex h-full w-full items-center justify-center"
+                      >
+                        <Plus size={32} strokeWidth={2.5} />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="close"
+                        initial={{ rotate: -90, opacity: 0 }}
+                        animate={{ rotate: 0, opacity: 1 }}
+                        exit={{ rotate: 90, opacity: 0 }}
+                        className="flex h-full w-full items-center justify-center"
+                      >
+                        <X size={32} strokeWidth={3} className="text-[#31005e]" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </button>
             </div>
           </div>
         </div>,
         document.body
       )}
- 
-      {/* 3. Bottom Navbar */}
+
       {createPortal(
         <nav
           ref={navRef}
-          className="fixed bottom-0 left-0 right-0 z-[1000] border-t border-white/10 bg-white/70 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-2xl"
+          className="fixed bottom-0 left-0 right-0 z-[1000] border-t border-white/10 bg-white/70 pb-1 pt-3 backdrop-blur-2xl"
+          style={{
+            paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))",
+            transform: "translateZ(0)",
+            willChange: "transform",
+          }}
         >
           <div className="relative mx-auto grid w-full max-w-lg grid-cols-5 items-center px-4">
             {tabs.slice(0, 2).map((tab) => (
@@ -309,5 +308,5 @@ const Navbar = ({ activeTab, setActiveTab, onWithdraw, onShowComingSoon, borrowL
     </>
   );
 };
- 
+
 export default Navbar;

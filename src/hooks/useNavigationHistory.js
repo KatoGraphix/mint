@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react';
 
-const mainTabs = ['home', 'credit', 'transact', 'investments', 'more'];
+const mainTabs = ['home', 'credit', 'transact', 'investments', 'more', 'welcome', 'auth'];
 
 const useNavigationHistory = (currentPage, setCurrentPage) => {
   const history = useRef([]);

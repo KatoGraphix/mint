@@ -1,0 +1,41 @@
+~/workspace$ git log main --oneline
+7155ede (HEAD -> Merge/Version1, origin/Merge/Version1, gitsafe-backup/main, main) Improve stock chart filters to show distinct time periods
+59c12ef Update year filter to show all available years on calendar returns
+66944fb Display portfolio logos immediately on the strategies tab
+9e2bbbe Restore original home page content and fix portfolio stock logos
+6396318 Display calendar returns grid even without investment history
+98c7da4 Update transaction history section to display calendar returns
+bb999bc Restore calendar view and add year filtering for strategy returns
+859ac68 Display available return periods instead of a calendar grid
+71e1171 Update portfolio page to use user's actual profile picture
+2bd0f4d Saved progress at the end of the loop
+9f32f89 Add skeleton loading to the portfolio page for a smoother user experience
+c107c5c Saved progress at the end of the loop
+9e4e715 Improve portfolio page loading and navigation responsiveness
+f533815 Saved progress at the end of the loop
+0d5c948 Add swipe gestures and back button support to portfolio page's internal views
+1134bc7 Improve app startup behavior by ensuring proper page loading
+6c155dc Integrate real-time investment data and improve user session handling
+c76fe16 Update investments page to use new portfolio component
+7f28caa Improve account balance display and visibility of hide icon
+769b02c Adjust pie chart position on mobile devices
+a510d7a Add a dynamic and visually engaging transition effect when switching between tabs
+fb5550e Restored to 'be4f4fff3c8e60e3316b5c516acfa1f78a97f2e9'
+2f8543f Add iOS-style glassmorphism tabs with animated transitions
+be4f4ff Improve readability of inactive tabs with subtle dark glow
+6966b67 Improve readability of inactive tabs with frosted glass effect
+eb738ae Improve tab visibility and alignment on mobile
+3c3f904 Improve tab visibility and alignment on mobile devices
+08cef53 Increase size of dropdown icon for better visibility
+9447976 Adjust strategy selector alignment and spacing for better mobile display
+fea6215 Adjust strategy selector positioning on mobile view
+b5913df Update display of total holdings and assets count on portfolio page
+71adfda Update the layout for displaying portfolio and holdings information
+7a3a165 Update holdings summary to show total value and asset count
+cbd6ddf Update holdings tab display to emphasize asset count
+0fb3e6c Add pagination to the holdings tab to match other sections
+569345c Update how investment holdings are displayed across all tabs
+31c228d Saved progress at the end of the loop
+09a697b Update stock data handling and display for holdings and individual stocks
+f873fb5 Saved progress at the end of the loop
+:

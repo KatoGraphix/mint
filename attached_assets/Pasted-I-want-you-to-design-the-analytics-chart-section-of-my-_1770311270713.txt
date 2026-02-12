@@ -1,0 +1,44 @@
+I want you to design the analytics chart section of my fintech dashboard so that it blends seamlessly into the app background instead of sitting inside a boxed card or container.
+
+Chart container & layout:
+
+1. Do NOT place the chart inside a rectangle card, panel, or bordered container.
+2. There must be no visible border, no shadow box, and no separate background behind the chart.
+3. The chart must appear embedded directly into the app surface.
+
+Background integration:
+
+4. The app uses a seamless purple gradient background.
+5. The chart canvas must be fully transparent so the gradient shows through.
+6. Do not apply any white, gray, or solid fill behind the chart.
+
+Chart line styling:
+
+7. The chart line must use a purple gradient stroke similar to a fintech dashboard.
+8. Gradient colors should range between electric violet, royal purple, and soft lavender tones.
+9. The line should have a smooth curved (spline/monotone) shape.
+10. Apply a soft outer glow or blur to the line for depth.
+11. The glow should match the purple theme — not gold or yellow.
+
+Highlight & interaction:
+
+12. Highlight the active data point with a circular marker.
+13. The marker should use the same purple gradient glow.
+14. Add a floating tooltip bubble above the point showing the value.
+15. Tooltip styling should match the purple UI theme.
+
+Minimal framing:
+
+16. Do not include axis lines, borders, or grid lines.
+17. Only display subtle day labels below the chart.
+18. Labels should use muted gray or soft purple text.
+
+Lighting & blending:
+
+19. The chart must visually blend into the background gradient.
+20. The glow from the line should softly illuminate the surface beneath it.
+21. Avoid harsh contrast — keep the design atmospheric and premium.
+
+Goal:
+
+The final result should look like a modern fintech analytics chart that is embedded into a purple gradient dashboard background, using a glowing purple line instead of gold, with no boxed container or visible chart frame.

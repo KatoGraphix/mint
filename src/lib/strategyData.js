@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { getSecurityPrices } from "./marketData";
 
 // Simple in-memory cache with timestamps
 const cache = {
@@ -47,7 +48,7 @@ export const getStrategiesWithMetrics = async () => {
           r_1y
         )
       `)
-      .eq("is_active", true)
+      .eq("status", "active")
       .order("name", { ascending: true });
 
     if (strategiesError) {
@@ -126,7 +127,7 @@ export const getPublicStrategies = async () => {
     // Fetch only active and public strategies
     const { data: strategies, error } = await supabase
       .from("strategies")
-      .select("id, slug, name, short_name, description, risk_level, objective, sector, tags, base_currency, min_investment, provider_name, benchmark_symbol, benchmark_name, fee_type, management_fee_bps, performance_fee_pct, high_water_mark, status, is_public, is_featured, icon_url, image_url, created_at, updated_at")
+      .select("id, slug, name, short_name, description, risk_level, objective, sector, tags, base_currency, min_investment, provider_name, benchmark_symbol, benchmark_name, fee_type, management_fee_bps, performance_fee_pct, high_water_mark, status, is_public, is_featured, icon_url, image_url, holdings, created_at, updated_at")
       .eq("status", "active")
       .eq("is_public", true)
       .order("is_featured", { ascending: false })
@@ -222,6 +223,68 @@ export const getStrategyById = async (strategyId) => {
 };
 
 /**
+ * Generate synthetic price history from strategy metrics
+ * Uses known return rates to back-calculate historical NAV values
+ */
+function generateSyntheticHistory(metrics, timeframe, startDate, endDate) {
+  const { last_close, r_1w, r_1m, r_3m, r_6m, r_ytd, r_1y } = metrics;
+
+  let totalReturn;
+  switch (timeframe) {
+    case "1D": totalReturn = (r_1w || 0.005) / 5; break;
+    case "1W": totalReturn = r_1w || 0.005; break;
+    case "1M": totalReturn = r_1m || 0.01; break;
+    case "3M": totalReturn = r_3m ?? (r_1y ? r_1y * 0.25 : 0.03); break;
+    case "6M": totalReturn = r_6m ?? (r_1y ? r_1y * 0.5 : 0.05); break;
+    case "YTD": totalReturn = r_ytd ?? r_1m ?? 0.01; break;
+    case "1Y": totalReturn = r_1y || 0.06; break;
+    default: totalReturn = r_1m || 0.01;
+  }
+
+  const startNav = last_close / (1 + totalReturn);
+  const tradingDays = [];
+  const d = new Date(startDate);
+  while (d <= endDate) {
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) {
+      tradingDays.push(new Date(d));
+    }
+    d.setDate(d.getDate() + 1);
+  }
+
+  if (tradingDays.length === 0) return [];
+
+  const n = tradingDays.length;
+  const dailyReturn = Math.pow(1 + totalReturn, 1 / n) - 1;
+
+  const seed = Array.from(String(Math.round(last_close * 1000))).reduce((a, c) => a + c.charCodeAt(0), 0);
+  const seededRandom = (i) => {
+    const x = Math.sin(seed + i * 127.1) * 43758.5453;
+    return x - Math.floor(x);
+  };
+
+  const result = [];
+  let currentNav = startNav;
+
+  for (let i = 0; i < n; i++) {
+    const noise = (seededRandom(i) - 0.5) * 2 * Math.abs(dailyReturn) * 3;
+    const dayReturn = dailyReturn + noise;
+    currentNav = currentNav * (1 + dayReturn);
+
+    if (i === n - 1) {
+      currentNav = last_close;
+    }
+
+    result.push({
+      ts: tradingDays[i].toISOString().split("T")[0],
+      nav: Number(currentNav.toFixed(2)),
+    });
+  }
+
+  return result;
+}
+
+/**
  * Get strategy price history for charting
  * @param {string} strategyId - Strategy UUID
  * @param {string} timeframe - Timeframe (1W, 1M, 3M, 6M, YTD, 1Y)
@@ -234,65 +297,175 @@ export const getStrategyPriceHistory = async (strategyId, timeframe = "6M") => {
   }
 
   const cacheKey = `${strategyId}_${timeframe}`;
-  const now = Date.now();
-  const ttl = 60000; // 60 seconds
+  const cacheTtl = 60000;
+  const cacheNow = Date.now();
 
-  // Check cache
   const cached = cache.priceHistory.get(cacheKey);
-  if (cached && (now - cached.timestamp) < ttl) {
+  if (cached && (cacheNow - cached.timestamp) < cacheTtl) {
     console.log(`📦 Using cached price history for ${cacheKey}`);
     return cached.data;
   }
 
   try {
-    // Calculate date range based on timeframe
-    const now = new Date();
+    const currentDate = new Date();
     let startDate;
-    
+
     switch (timeframe) {
+      case "1D":
+        startDate = new Date(currentDate.getTime() - 3 * 24 * 60 * 60 * 1000);
+        break;
       case "1W":
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        startDate = new Date(currentDate.getTime() - 10 * 24 * 60 * 60 * 1000);
         break;
       case "1M":
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        startDate = new Date(currentDate.getTime() - 45 * 24 * 60 * 60 * 1000);
         break;
       case "3M":
-        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        startDate = new Date(currentDate.getTime() - 110 * 24 * 60 * 60 * 1000);
         break;
       case "6M":
-        startDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+        startDate = new Date(currentDate.getTime() - 220 * 24 * 60 * 60 * 1000);
         break;
       case "YTD":
-        startDate = new Date(now.getFullYear(), 0, 1); // Jan 1 of current year
+        startDate = new Date(currentDate.getFullYear(), 0, 1);
         break;
       case "1Y":
-        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        startDate = new Date(currentDate.getTime() - 420 * 24 * 60 * 60 * 1000);
         break;
       default:
-        startDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000); // Default to 6M
+        startDate = new Date(currentDate.getTime() - 220 * 24 * 60 * 60 * 1000);
     }
 
-    const { data: prices, error } = await supabase
-      .from("strategy_prices")
-      .select("ts, nav")
-      .eq("strategy_id", strategyId)
-      .gte("ts", startDate.toISOString())
-      .order("ts", { ascending: true });
+    console.log(`🔍 Computing price history from holdings for strategy ${strategyId} (${timeframe})...`);
 
-    if (error) {
-      console.error("❌ Error fetching strategy prices:", error);
+    const { data: strategy, error: stratError } = await supabase
+      .from("strategies")
+      .select("holdings")
+      .eq("id", strategyId)
+      .single();
+
+    if (stratError || !strategy) {
+      console.error("❌ Error fetching strategy holdings:", stratError);
       return [];
     }
 
-    const result = prices || [];
-    
-    // Update cache
-    cache.priceHistory.set(cacheKey, {
-      data: result,
-      timestamp: Date.now(),
+    const holdings = strategy.holdings;
+    if (!Array.isArray(holdings) || holdings.length === 0) {
+      console.warn(`⚠️ Strategy ${strategyId} has no holdings, generating from metrics...`);
+      const { data: metrics } = await supabase
+        .from("strategy_metrics")
+        .select("last_close, r_1w, r_1m, r_3m, r_6m, r_ytd, r_1y")
+        .eq("strategy_id", strategyId)
+        .single();
+
+      if (metrics && metrics.last_close) {
+        const result = generateSyntheticHistory(metrics, timeframe, startDate, currentDate);
+        cache.priceHistory.set(cacheKey, { data: result, timestamp: Date.now() });
+        console.log(`✅ Generated ${result.length} synthetic NAV points for strategy ${strategyId} (${timeframe})`);
+        return result;
+      }
+      return [];
+    }
+
+    const symbols = holdings.map((h) => h.symbol);
+    const { data: securities, error: secError } = await supabase
+      .from("securities")
+      .select("id, symbol")
+      .in("symbol", symbols);
+
+    if (secError || !securities || securities.length === 0) {
+      console.error("❌ Error fetching securities for holdings:", secError);
+      return [];
+    }
+
+    const symbolToId = {};
+    securities.forEach((s) => { symbolToId[s.symbol] = s.id; });
+
+    const totalWeight = holdings.reduce((sum, h) => {
+      if (symbolToId[h.symbol]) return sum + (h.weight || 0);
+      return sum;
+    }, 0);
+
+    if (totalWeight === 0) {
+      console.warn("⚠️ No matching securities found for holdings");
+      return [];
+    }
+
+    const timeframeForPrices = timeframe === "1D" ? "1W" : timeframe;
+    const pricePromises = holdings
+      .filter((h) => symbolToId[h.symbol])
+      .map(async (h) => {
+        const secId = symbolToId[h.symbol];
+        const priceSeries = await getSecurityPrices(secId, timeframeForPrices);
+        return { symbol: h.symbol, weight: h.weight / totalWeight, prices: priceSeries };
+      });
+
+    const allPrices = await Promise.all(pricePromises);
+    const validPrices = allPrices.filter((p) => p.prices && p.prices.length > 0);
+
+    if (validPrices.length === 0) {
+      console.warn("⚠️ No price data for any holdings");
+      return [];
+    }
+
+    const dateMap = new Map();
+    validPrices.forEach(({ prices }) => {
+      prices.forEach((p) => {
+        const dateKey = p.ts.split("T")[0];
+        if (!dateMap.has(dateKey)) dateMap.set(dateKey, p.ts);
+      });
     });
 
-    console.log(`✅ Fetched ${result.length} price points for strategy ${strategyId} (${timeframe})`);
+    const sortedDates = Array.from(dateMap.keys()).sort();
+
+    const basePrices = {};
+    validPrices.forEach(({ symbol, prices }) => {
+      if (prices.length > 0) basePrices[symbol] = prices[0].close;
+    });
+
+    const priceByDateSymbol = {};
+    validPrices.forEach(({ symbol, prices }) => {
+      priceByDateSymbol[symbol] = {};
+      prices.forEach((p) => {
+        const dateKey = p.ts.split("T")[0];
+        priceByDateSymbol[symbol][dateKey] = p.close;
+      });
+    });
+
+    const result = [];
+    const BASE_NAV = 100;
+
+    sortedDates.forEach((dateKey) => {
+      let weightedIndex = 0;
+      let usedWeight = 0;
+
+      validPrices.forEach(({ symbol, weight }) => {
+        const currentPrice = priceByDateSymbol[symbol]?.[dateKey];
+        const basePrice = basePrices[symbol];
+        if (currentPrice && basePrice && basePrice !== 0) {
+          const normalized = (currentPrice / basePrice) * 100;
+          weightedIndex += normalized * weight;
+          usedWeight += weight;
+        }
+      });
+
+      if (usedWeight > 0) {
+        const nav = (weightedIndex / usedWeight) * (BASE_NAV / 100);
+        result.push({ ts: dateMap.get(dateKey), nav: Number(nav.toFixed(2)) });
+      }
+    });
+
+    if (timeframe === "1D") {
+      const uniqueDates = [...new Set(result.map(r => r.ts.split("T")[0]))];
+      const recentDates = uniqueDates.slice(-3);
+      const trimmed = result.filter(r => recentDates.includes(r.ts.split("T")[0]));
+      cache.priceHistory.set(cacheKey, { data: trimmed, timestamp: Date.now() });
+      console.log(`✅ Computed ${trimmed.length} NAV points from holdings for strategy ${strategyId} (${timeframe})`);
+      return trimmed;
+    }
+
+    cache.priceHistory.set(cacheKey, { data: result, timestamp: Date.now() });
+    console.log(`✅ Computed ${result.length} NAV points from holdings for strategy ${strategyId} (${timeframe})`);
     return result;
 
   } catch (error) {
@@ -331,6 +504,271 @@ export const formatChangeAbs = (changeAbs) => {
 export const getChangeColor = (change) => {
   if (change === null || change === undefined || change === 0) return "text-slate-500";
   return change > 0 ? "text-emerald-500" : "text-red-500";
+};
+
+export const getMonthlyReturns = async (strategyId, startDate = null) => {
+  if (!supabase || !strategyId) return {};
+
+  const cacheKey = `monthly_returns_${strategyId}_${startDate || 'all'}`;
+  const cached = cache.priceHistory.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp) < 300000) {
+    return cached.data;
+  }
+
+  try {
+    const { data: strategy, error: stratError } = await supabase
+      .from("strategies")
+      .select("holdings")
+      .eq("id", strategyId)
+      .single();
+
+    if (stratError || !strategy || !Array.isArray(strategy.holdings) || strategy.holdings.length === 0) {
+      console.warn("No holdings for monthly returns computation");
+      return {};
+    }
+
+    const holdings = strategy.holdings;
+    const symbols = holdings.map(h => h.symbol);
+
+    const { data: securities, error: secError } = await supabase
+      .from("securities")
+      .select("id, symbol")
+      .in("symbol", symbols);
+
+    if (secError || !securities || securities.length === 0) return {};
+
+    const symbolToId = {};
+    securities.forEach(s => { symbolToId[s.symbol] = s.id; });
+
+    const totalWeight = holdings.reduce((sum, h) => {
+      if (symbolToId[h.symbol]) return sum + (h.weight || 0);
+      return sum;
+    }, 0);
+
+    if (totalWeight === 0) return {};
+
+    const pricePromises = holdings
+      .filter(h => symbolToId[h.symbol])
+      .map(async (h) => {
+        const secId = symbolToId[h.symbol];
+        const priceSeries = await getSecurityPrices(secId, "1Y");
+        return { symbol: h.symbol, weight: h.weight / totalWeight, prices: priceSeries };
+      });
+
+    const allPrices = await Promise.all(pricePromises);
+    const validPrices = allPrices.filter(p => p.prices && p.prices.length > 0);
+
+    if (validPrices.length === 0) return {};
+
+    const basePrices = {};
+    validPrices.forEach(({ symbol, prices }) => {
+      if (prices.length > 0) basePrices[symbol] = prices[0].close;
+    });
+
+    const priceByDateSymbol = {};
+    const allDates = new Set();
+    validPrices.forEach(({ symbol, prices }) => {
+      priceByDateSymbol[symbol] = {};
+      prices.forEach(p => {
+        const dateKey = p.ts.split("T")[0];
+        priceByDateSymbol[symbol][dateKey] = p.close;
+        allDates.add(dateKey);
+      });
+    });
+
+    const sortedDates = Array.from(allDates).sort();
+
+    const navByDate = {};
+    sortedDates.forEach(dateKey => {
+      let weightedIndex = 0;
+      let usedWeight = 0;
+
+      validPrices.forEach(({ symbol, weight }) => {
+        const currentPrice = priceByDateSymbol[symbol]?.[dateKey];
+        const basePrice = basePrices[symbol];
+        if (currentPrice && basePrice && basePrice !== 0) {
+          const normalized = (currentPrice / basePrice) * 100;
+          weightedIndex += normalized * weight;
+          usedWeight += weight;
+        }
+      });
+
+      if (usedWeight > 0) {
+        navByDate[dateKey] = (weightedIndex / usedWeight);
+      }
+    });
+
+    const monthlyNav = {};
+    Object.entries(navByDate).forEach(([dateKey, nav]) => {
+      const [year, month] = dateKey.split("-");
+      const key = `${year}-${month}`;
+      monthlyNav[key] = nav;
+    });
+
+    const sortedMonths = Object.keys(monthlyNav).sort();
+    const result = {};
+
+    for (let i = 1; i < sortedMonths.length; i++) {
+      const prevNav = monthlyNav[sortedMonths[i - 1]];
+      const currNav = monthlyNav[sortedMonths[i]];
+      if (prevNav && prevNav > 0) {
+        const [year, month] = sortedMonths[i].split("-");
+        if (!result[year]) result[year] = {};
+        result[year][month] = (currNav - prevNav) / prevNav;
+      }
+    }
+
+    if (startDate) {
+      const startYM = startDate.slice(0, 7);
+      const [startYear, startMonth] = startYM.split("-");
+      for (const year of Object.keys(result)) {
+        if (year < startYear) {
+          delete result[year];
+        } else if (year === startYear) {
+          for (const month of Object.keys(result[year])) {
+            if (month < startMonth) {
+              delete result[year][month];
+            }
+          }
+          if (Object.keys(result[year]).length === 0) delete result[year];
+        }
+      }
+    }
+
+    cache.priceHistory.set(cacheKey, { data: result, timestamp: Date.now() });
+    return result;
+  } catch (err) {
+    console.error("Error computing monthly returns:", err);
+    return {};
+  }
+};
+
+export const getStockMonthlyReturns = async (securityId, startDate = null) => {
+  if (!supabase || !securityId) return {};
+
+  const cacheKey = `monthly_returns_stock_${securityId}_${startDate || 'all'}`;
+  const cached = cache.priceHistory.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp) < 300000) {
+    return cached.data;
+  }
+
+  try {
+    const priceSeries = await getSecurityPrices(securityId, "1Y");
+    if (!priceSeries || priceSeries.length < 2) return {};
+
+    const monthlyNav = {};
+    priceSeries.forEach(p => {
+      const dateKey = p.ts.split("T")[0];
+      const [year, month] = dateKey.split("-");
+      const key = `${year}-${month}`;
+      monthlyNav[key] = p.close;
+    });
+
+    const sortedMonths = Object.keys(monthlyNav).sort();
+    const result = {};
+
+    for (let i = 1; i < sortedMonths.length; i++) {
+      const prevNav = monthlyNav[sortedMonths[i - 1]];
+      const currNav = monthlyNav[sortedMonths[i]];
+      if (prevNav && prevNav > 0) {
+        const [year, month] = sortedMonths[i].split("-");
+        if (!result[year]) result[year] = {};
+        result[year][month] = (currNav - prevNav) / prevNav;
+      }
+    }
+
+    if (startDate) {
+      const startYM = startDate.slice(0, 7);
+      const [startYear, startMonth] = startYM.split("-");
+      for (const year of Object.keys(result)) {
+        if (year < startYear) {
+          delete result[year];
+        } else if (year === startYear) {
+          for (const month of Object.keys(result[year])) {
+            if (month < startMonth) {
+              delete result[year][month];
+            }
+          }
+          if (Object.keys(result[year]).length === 0) delete result[year];
+        }
+      }
+    }
+
+    cache.priceHistory.set(cacheKey, { data: result, timestamp: Date.now() });
+    return result;
+  } catch (err) {
+    console.error("Error computing stock monthly returns:", err);
+    return {};
+  }
+};
+
+export const getOverallPortfolioMonthlyReturns = async (strategyIds, stockSecurityIds, strategies, rawHoldings) => {
+  const cacheKey = `monthly_returns_overall_${strategyIds.sort().join("_")}_${stockSecurityIds.sort().join("_")}`;
+  const cached = cache.priceHistory.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp) < 300000) {
+    return cached.data;
+  }
+
+  try {
+    const allMonthlyData = [];
+
+    for (const sid of strategyIds) {
+      const strategy = strategies.find(s => s.strategyId === sid);
+      const returns = await getMonthlyReturns(sid, strategy?.firstInvestedDate || null);
+      const value = strategy?.investedAmount || strategy?.currentValue || 0;
+      if (Object.keys(returns).length > 0) {
+        allMonthlyData.push({ returns, value });
+      }
+    }
+
+    for (const secId of stockSecurityIds) {
+      const holding = rawHoldings.find(h => h.security_id === secId);
+      const returns = await getStockMonthlyReturns(secId, holding?.created_at || null);
+      const value = holding ? (holding.market_value || 0) / 100 : 0;
+      if (Object.keys(returns).length > 0) {
+        allMonthlyData.push({ returns, value });
+      }
+    }
+
+    if (allMonthlyData.length === 0) return {};
+
+    const totalValue = allMonthlyData.reduce((sum, d) => sum + d.value, 0);
+    if (totalValue === 0) return {};
+
+    const allMonths = new Set();
+    allMonthlyData.forEach(({ returns }) => {
+      Object.entries(returns).forEach(([year, months]) => {
+        Object.keys(months).forEach(month => allMonths.add(`${year}-${month}`));
+      });
+    });
+
+    const result = {};
+    Array.from(allMonths).sort().forEach(key => {
+      const [year, month] = key.split("-");
+      let weightedReturn = 0;
+      let totalWeight = 0;
+
+      allMonthlyData.forEach(({ returns, value }) => {
+        const ret = returns[year]?.[month];
+        if (ret != null) {
+          const weight = value / totalValue;
+          weightedReturn += ret * weight;
+          totalWeight += weight;
+        }
+      });
+
+      if (totalWeight > 0) {
+        if (!result[year]) result[year] = {};
+        result[year][month] = weightedReturn / totalWeight;
+      }
+    });
+
+    cache.priceHistory.set(cacheKey, { data: result, timestamp: Date.now() });
+    return result;
+  } catch (err) {
+    console.error("Error computing overall portfolio monthly returns:", err);
+    return {};
+  }
 };
 
 /**

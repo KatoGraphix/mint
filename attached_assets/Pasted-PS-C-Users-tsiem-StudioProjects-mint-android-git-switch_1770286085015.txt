@@ -1,0 +1,32 @@
+PS C:\Users\tsiem\StudioProjects\mint\android> git switch Android.v2
+M       android/.idea/misc.xml
+M       android/app/capacitor.build.gradle
+M       android/capacitor.settings.gradle
+branch 'Android.v2' set up to track 'origin/Android.v2'.
+Switched to a new branch 'Android.v2'
+PS C:\Users\tsiem\StudioProjects\mint\android> npm run build
+
+> mint@1.0.0 build
+> vite build
+
+vite v5.4.21 building for production...
+transforming (3) src\main.jsx
+../assets/fonts/future-earth.ttf referenced in ../assets/fonts/future-earth.ttf didn't resolve at build time, it will remain unchanged to be resolved at runtime
+✓ 56 modules transformed.
+x Build failed in 2.32s
+error during build:
+[vite]: Rollup failed to resolve import "@capacitor/haptics" from "C:/Users/tsiem/StudioProjects/mint/src/components/SwipeBackWrapper.jsx".                                                                                         
+This is most likely unintended because it can break your application at runtime.                                                                                                                                                    
+If you do want to externalize this module explicitly add it to                                                                                                                                                                      
+`build.rollupOptions.external`                                                                                                                                                                                                      
+    at viteWarn (file:///C:/Users/tsiem/StudioProjects/mint/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65855:17)                                                                                                            
+    at onwarn (file:///C:/Users/tsiem/StudioProjects/mint/node_modules/@vitejs/plugin-react/dist/index.js:90:7)                                                                                                                     
+    at onRollupWarning (file:///C:/Users/tsiem/StudioProjects/mint/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65885:5)                                                                                                      
+    at onwarn (file:///C:/Users/tsiem/StudioProjects/mint/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65550:7)                                                                                                               
+    at file:///C:/Users/tsiem/StudioProjects/mint/node_modules/rollup/dist/es/shared/node-entry.js:21095:13                                                                                                                         
+    at Object.logger [as onLog] (file:///C:/Users/tsiem/StudioProjects/mint/node_modules/rollup/dist/es/shared/node-entry.js:22968:9)                                                                                               
+    at ModuleLoader.handleInvalidResolvedId (file:///C:/Users/tsiem/StudioProjects/mint/node_modules/rollup/dist/es/shared/node-entry.js:21712:26)                                                                                  
+    at ModuleLoader.resolveDynamicImport (file:///C:/Users/tsiem/StudioProjects/mint/node_modules/rollup/dist/es/shared/node-entry.js:21770:58)                                                                                     
+    at async file:///C:/Users/tsiem/StudioProjects/mint/node_modules/rollup/dist/es/shared/node-entry.js:21654:32                                                                                                                   
+PS C:\Users\tsiem\StudioProjects\mint\android> 
+PS C:\Users\tsiem\StudioProject

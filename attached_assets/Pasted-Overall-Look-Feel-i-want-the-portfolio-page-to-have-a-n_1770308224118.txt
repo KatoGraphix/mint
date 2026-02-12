@@ -1,0 +1,295 @@
+Overall Look & Feel
+i want the portfolio page to have a new dashboard, the new dashboard should look like this, but it should keep the same style and them of the app
+the style should be modern fintech/ investment dashboard
+mood of it should feel and look premium sleek, and data-focused.
+The design uses glassmorphism + glow effects to make financial data feel high-value and interactive.
+
+IGNORE
+2) Status Bar / Device Frame
+
+At the very top:
+
+Time displayed: 9:41
+
+Standard iOS status icons:
+
+Signal
+
+Wi-Fi
+
+Battery
+
+This confirms it’s designed as an iPhone UI mockup.
+
+
+
+
+3) Header / DO NOT ADD THE Greeting Section
+Left side:
+
+Small circular profile avatar.
+
+DO NOT ADD THE Greeting text:
+
+“Hello, Johnson”
+
+Friendly, personalized tone.
+
+Right side:
+
+A bell notification icon THAT MATCHES THE APP
+
+Subtle glow/contrast to indicate tap interaction.
+
+This section establishes user identity + alerts access.
+
+
+
+
+FOR SECTION 4
+4. ) Total Account Value Card
+
+Large financial summary block:
+
+Main figure:
+
+$24,897.43 (in rands)
+
+Bold, large font.
+
+Primary focal point of the screen.
+
+Label below:
+
+“Account Value”
+
+Smaller, muted gray text.
+
+Eye icon beside value:
+
+Used to hide/show balance (privacy feature).
+
+Background effect:
+
+ gradient glow radiating behind the number.
+
+Creates a premium wealth feel.
+
+
+5) Tab Selector (Investment Categories)
+
+Pill-shaped segmented control:
+
+Tabs:
+
+Strategy Name (Active)
+
+Individual Stock
+
+Goals
+
+Active tab styling:
+
+ gradient fill.
+
+Dark text.
+
+Elevated appearance.
+
+Inactive tabs:
+
+Transparent/dark background.
+
+Light gray text.
+
+This allows switching between financial product categories.
+
+
+6) Investment Analytics Section
+Title:
+
+“Strategy Name” with a dropdown arrow.
+
+Suggests selectable with category names
+
+Time filters (right side):
+
+
+D daily
+W (Week) — Active
+
+M (Month)
+
+A all time
+
+The active filter is highlighted with a soft glow.
+
+
+7) Investment Performance Card
+
+This is the data visualization core of the page.
+
+Current value:
+
+$4,449.30
+
+Medium-large bold text.
+
+Performance note:
+
+“(21% Previous Month)”
+
+Indicates growth vs prior period.
+
+
+8) Line Graph
+
+A smooth, curved performance chart showing fluctuations.
+
+Graph styling:
+
+Light gray line (use theme of app ) on dark background.
+
+Soft glow around active data point.
+
+Highlighted point:
+
+Tuesday (Tue).
+
+Vertical gold gradient bar rising from the graph.
+
+Label above point: $870.(rands)
+
+This creates a spotlight effect on that day’s peak performance.
+
+
+9) Day Labels (X-Axis)
+
+Displayed below the graph:
+
+Sat
+
+Sun
+
+Mon
+
+Tue (Selected)
+
+Wed
+
+Thu
+
+The selected day aligns with the  highlight bar.
+
+
+add proper labels as well for weekly, monthly and all time
+
+
+10) CTA Button
+
+Centered below analytics:
+
+“View All allocations”
+
+Styling:
+
+Rounded pill shape.
+
+Light gray background.
+
+Dark text.
+
+This leads to a detailed portfolio screen.
+
+
+
+do not add section 11 yet i will tell you where and when to use it
+11) Bottom Action Bar
+
+A floating rounded toolbar with 4 actions:
+
+1) Buy
+
+Plus (+) icon.
+
+Used to purchase assets.
+
+2) Sell
+
+Minus (–) icon.
+
+Sell investments.
+
+3) Send
+
+Arrow/transfer icon.
+
+Move funds/assets.
+
+4) More
+
+Ellipsis (…) icon.
+
+Opens additional options.
+
+Design:
+
+Light surface over dark background.
+
+Soft shadow for elevation.
+
+Icons + labels stacked vertically.
+
+
+12) Visual Hierarchy
+
+Importance order (what your eye sees first):
+
+Account balance ($24,897.43)
+
+ performance highlight
+
+Investment value ($4,449.30)
+
+Graph trend line
+
+Action buttons
+
+The gold gradient is used sparingly to guide attention.
+
+
+13) UX Patterns Used
+
+Balance visibility toggle (eye icon)
+
+Segmented tabs
+
+Time filters
+
+Interactive chart highlight
+
+Floating action bar
+
+Personalized greeting
+
+All standard in fintech dashboards.
+
+
+
+
+
+
+
+
+under the view all allocations button
+
+add a section card
+add a label called linked goals and a button on the right that says view all and a progress bar and also should say how far you are with your goal or how close uou are to coming to your goal maybe like you have R150K/ R500k and progress bar also shows that
+when you press the view all button thats where you will see each/all allocated investments/shares
+
+
+below that add another section card
+representing a user holdings
+the holdings should show the stocks/shares being held with its logo and tick level and 
+
+

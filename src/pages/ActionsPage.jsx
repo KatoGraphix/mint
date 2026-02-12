@@ -1,30 +1,65 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   ArrowLeft,
   BadgeCheck,
   ChevronRight,
+  CheckCircle2,
+  FileText,
   Landmark,
   UserPlus,
-  CheckCircle2,
 } from "lucide-react";
 import ActionsSkeleton from "../components/ActionsSkeleton";
-import { useRequiredActions } from "../lib/useRequiredActions";
 import { useSumsubStatus } from "../lib/useSumsubStatus";
+import { useRequiredActions } from "../lib/useRequiredActions";
+import { supabase } from "../lib/supabase";
 
 const ActionsPage = ({ onBack, onNavigate }) => {
   const { bankLinked, bankInReview, bankSnapshotExists, loading: actionsLoading } = useRequiredActions();
   const { kycVerified, kycPending, kycNeedsResubmission, loading: kycLoading, rejectLabels } = useSumsubStatus();
-  const loading = actionsLoading || kycLoading;
+  const [onboardingData, setOnboardingData] = useState(null);
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
-  if (loading) {
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      if (!supabase) {
+        setCheckingOnboarding(false);
+        return;
+      }
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+        if (!userId) {
+          setCheckingOnboarding(false);
+          return;
+        }
+        const { data } = await supabase
+          .from("user_onboarding")
+          .select("kyc_status")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        setOnboardingData(data?.[0] || null);
+      } catch {
+      } finally {
+        setCheckingOnboarding(false);
+      }
+    };
+    checkOnboarding();
+  }, []);
+
+  if (actionsLoading || kycLoading || checkingOnboarding) {
     return <ActionsSkeleton />;
   }
 
   const getBankStatus = () => {
-    if (bankLinked) return "Verified";
-    if (bankInReview) return "In review";
-    return "Required";
+    if (bankLinked) return { text: "Verified", style: "bg-green-100 text-green-600" };
+    if (bankInReview) return { text: "In review", style: "bg-blue-100 text-blue-600" };
+    return { text: "Required", style: "bg-slate-100 text-slate-500" };
   };
+
+  const bankStatus = getBankStatus();
+
+  const allOnboardingComplete = kycVerified && onboardingData?.kyc_status === "onboarding_complete";
 
   const getKycStatus = () => {
     if (kycVerified) return { text: "Verified", style: "bg-green-100 text-green-600" };
@@ -51,8 +86,19 @@ const ActionsPage = ({ onBack, onNavigate }) => {
       }
       return "Some documents need resubmission";
     }
+    if (kycVerified) return "Identity verification complete";
     return "Needed to unlock higher limits";
   };
+
+  const getOnboardingStatus = () => {
+    if (!kycVerified) return { text: "Awaiting KYC", style: "bg-slate-100 text-slate-500" };
+    if (allOnboardingComplete) return { text: "Complete", style: "bg-green-100 text-green-600" };
+    return { text: "Required", style: "bg-slate-100 text-slate-500" };
+  };
+
+  const onboardingStatus = getOnboardingStatus();
+
+  const bankActionRequired = !bankSnapshotExists;
 
   const allActions = [
     {
@@ -65,33 +111,48 @@ const ActionsPage = ({ onBack, onNavigate }) => {
       completed: kycVerified,
       navigateTo: "identityCheck",
     },
-    ...(bankSnapshotExists
-      ? []
-      : [
+    {
+      id: "onboarding",
+      title: "Complete onboarding",
+      description: allOnboardingComplete
+        ? "Risk disclosure, source of funds, and agreements complete"
+        : "Risk disclosure, source of funds, and agreements",
+      status: onboardingStatus.text,
+      statusStyle: onboardingStatus.style,
+      icon: FileText,
+      completed: allOnboardingComplete,
+      navigateTo: "identityCheck",
+      disabled: !kycVerified,
+    },
+    ...(bankActionRequired
+      ? [
           {
             id: "bank-link",
             title: "Link your primary bank",
             description: "Connect to enable instant transfers",
-            status: getBankStatus(),
+            status: bankStatus.text,
+            statusStyle: bankStatus.style,
             icon: Landmark,
             completed: bankLinked,
             navigateTo: "creditApply",
           },
-        ]),
+        ]
+      : []),
     {
       id: "invite",
       title: "Invite a friend",
       description: "Share Mint and earn bonus rewards",
       status: "Optional",
+      statusStyle: "bg-slate-100 text-slate-500",
       icon: UserPlus,
       completed: false,
       navigateTo: "invite",
     },
   ];
 
-  const outstandingActions = allActions.filter((a) => !a.completed);
+  const outstandingActions = allActions.filter((a) => !a.completed && !a.disabled);
   const completedActions = allActions.filter((a) => a.completed);
-  const allRequiredComplete = kycVerified && bankLinked;
+  const allRequiredComplete = allOnboardingComplete && (!bankActionRequired || bankLinked);
 
   const handleActionPress = (action) => {
     if (onNavigate && action.navigateTo) {
@@ -121,7 +182,15 @@ const ActionsPage = ({ onBack, onNavigate }) => {
               <CheckCircle2 className="h-10 w-10" />
             </div>
             <h2 className="text-lg font-semibold text-slate-900 mb-2">All done!</h2>
-            <p className="text-sm text-slate-500">You've completed all required actions.</p>
+            <p className="text-sm text-slate-500 mb-6">You've completed all required actions.</p>
+            <button
+              type="button"
+              onClick={onBack}
+              className="px-6 py-2.5 rounded-full font-medium text-white text-sm transition-all duration-200"
+              style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' }}
+            >
+              Go to Home
+            </button>
           </div>
         ) : (
           <>
