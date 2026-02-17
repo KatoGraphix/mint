@@ -293,7 +293,7 @@ const SwipeableBalanceCard = ({ userId, isBackFacing = true, forceVisible }) => 
         </div>
         <div className="flex-1 flex items-end gap-1 py-3">
           {[40, 55, 35, 65, 50, 70, 45, 60, 75, 55].map((h, i) => (
-            <Skeleton key={i} className="flex-1 rounded-sm bg-white/10" style={{ height: `${h}%` }} />
+            <Skeleton key={i} className="flex-1 rounded-sm bg-gray-200" style={{ height: `${h}%` }} />
           ))}
         </div>
         <Skeleton className="h-8 w-full rounded-xl bg-white/10" />
@@ -315,7 +315,7 @@ const SwipeableBalanceCard = ({ userId, isBackFacing = true, forceVisible }) => 
         <div className="absolute top-2 right-3 z-20 flex items-center gap-1.5">
           {showUpdatedText && (
             <span
-              className="text-[8px] text-white/50 font-medium transition-opacity duration-500"
+              className="text-[8px] text-gray-500 font-medium transition-opacity duration-500"
               style={{ animation: "fadeInOut 3s ease-in-out" }}
             >
               {getUpdatedAgoText()}
@@ -339,16 +339,16 @@ const SwipeableBalanceCard = ({ userId, isBackFacing = true, forceVisible }) => 
           `}</style>
         </div>
       )}
-      <div className="relative z-10 flex h-full text-white">
-        <div className="w-[50%] p-4 flex flex-col justify-between border-r border-white/15">
+      <div className="relative z-10 flex h-full text-slate-900">
+        <div className="w-[50%] p-4 flex flex-col justify-between border-r border-slate-200">
           <div className="space-y-3">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/55 font-medium mb-1.5">
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 font-medium mb-1.5">
                 {selectedAsset ? selectedAsset.symbol : "portfolio value"}
               </p>
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-base font-semibold">{isVisible ? formatKMB(displayMarketValue) : masked}</span>
-                <span className="px-1.5 py-0.5 rounded-full bg-white/12 text-[8px] font-medium uppercase text-white/70 border border-white/10">
+                <span className="px-1.5 py-0.5 rounded-full bg-gray-100 text-[8px] font-medium uppercase text-gray-600 border border-gray-200">
                   {isVisible ? formatKMB(displayInvested) : masked}(inv)
                 </span>
               </div>
@@ -360,25 +360,25 @@ const SwipeableBalanceCard = ({ userId, isBackFacing = true, forceVisible }) => 
               </div>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/55 font-medium mb-1.5">
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 font-medium mb-1.5">
                 holdings ({dbData.holdingsCount})
               </p>
               {dbData.holdings.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
                   {dbData.holdings.slice(0, 3).map((h, i) => (
-                    <div key={i} className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/10 border border-white/10">
+                    <div key={i} className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gray-100 border border-gray-200">
                       {h.isStrategy && h.topLogos?.length > 0 ? (
                         <div className="flex -space-x-1">
                           {h.topLogos.slice(0, 3).map((logo, li) => (
-                            <img key={li} src={logo} className="w-3 h-3 rounded-full object-cover border border-white/25" />
+                            <img key={li} src={logo} className="w-3 h-3 rounded-full object-cover border border-gray-200" />
                           ))}
                         </div>
                       ) : h.logo_url ? (
                         <img src={h.logo_url} className="w-3 h-3 rounded-full object-cover" />
                       ) : (
-                        <span className="text-[6px] text-white/65">{h.symbol?.substring(0, 2)}</span>
+                        <span className="text-[6px] text-gray-600">{h.symbol?.substring(0, 2)}</span>
                       )}
-                      <span className="text-[8px] font-medium text-white/80">{h.isStrategy ? h.symbol : h.symbol?.replace('.JO', '')}</span>
+                      <span className="text-[8px] font-medium text-gray-800">{h.isStrategy ? h.symbol : h.symbol?.replace('.JO', '')}</span>
                       {(() => {
                         const s = h.settlement_status || holdingSettlementStatus;
                         return s && s !== "confirmed" ? <SettlementBadge status={s} size="xs" /> : null;
@@ -386,11 +386,11 @@ const SwipeableBalanceCard = ({ userId, isBackFacing = true, forceVisible }) => 
                     </div>
                   ))}
                   {dbData.holdings.length > 3 && (
-                    <span className="text-[8px] text-white/45 self-center">+{dbData.holdings.length - 3}</span>
+                    <span className="text-[8px] text-gray-500 self-center">+{dbData.holdings.length - 3}</span>
                   )}
                 </div>
               ) : (
-                <p className="text-[9px] text-white/45">No holdings yet</p>
+                <p className="text-[9px] text-gray-500">No holdings yet</p>
               )}
             </div>
           </div>
@@ -398,9 +398,9 @@ const SwipeableBalanceCard = ({ userId, isBackFacing = true, forceVisible }) => 
 
         <div className="w-[50%] p-4 flex flex-col">
           <div className="flex justify-end mb-2">
-            <div className="flex bg-white/12 p-0.5 rounded-lg border border-white/10 backdrop-blur-sm">
+            <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
               {["1m", "3m", "6m"].map((tab) => (
-                <button key={tab} onClick={() => setActiveTab(tab)} className={`px-3 py-1 text-[10px] font-semibold rounded-md ${activeTab === tab ? "bg-white text-slate-900" : "text-white/60"}`}>{tab.toUpperCase()}</button>
+                <button key={tab} onClick={() => setActiveTab(tab)} className={`px-3 py-1 text-[10px] font-semibold rounded-md ${activeTab === tab ? "bg-white text-black shadow-sm" : "text-gray-600 hover:text-black"}`}>{tab.toUpperCase()}</button>
               ))}
             </div>
           </div>
@@ -418,48 +418,48 @@ const SwipeableBalanceCard = ({ userId, isBackFacing = true, forceVisible }) => 
                 {chartLoading ? (
                   <div className="flex items-end gap-1 w-full h-full py-2">
                     {[40, 55, 35, 65, 50, 70, 45, 60, 75, 55, 65, 50].map((h, i) => (
-                      <Skeleton key={i} className="flex-1 rounded-sm bg-white/10" style={{ height: `${h}%` }} />
+                      <Skeleton key={i} className="flex-1 rounded-sm bg-gray-200" style={{ height: `${h}%` }} />
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[9px] text-white/40">No chart data</p>
+                  <p className="text-[9px] text-gray-500">No chart data</p>
                 )}
               </div>
             )}
           </div>
-          <button onClick={() => setIsOpen(!isOpen)} className="mt-2 flex items-center justify-between p-2 rounded-xl bg-white/10 border border-white/10 backdrop-blur-sm">
+          <button onClick={() => setIsOpen(!isOpen)} className="mt-2 flex items-center justify-between p-2 rounded-xl bg-gray-100 border border-gray-200 backdrop-blur-sm">
             <div className="flex items-center gap-2">
               <LayoutGrid size={12} className="text-violet-400" />
-              <span className="text-[10px] font-medium text-white/85">{selectedAsset ? selectedAsset.symbol : "All Investments"}</span>
+              <span className="text-[10px] font-medium text-gray-900">{selectedAsset ? selectedAsset.symbol : "All Investments"}</span>
             </div>
-            {isOpen ? <ChevronUp size={14} className="text-white/65" /> : <ChevronDown size={14} className="text-white/65" />}
+            {isOpen ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
           </button>
         </div>
       </div>
 
       {isOpen && (
-        <div className="absolute bottom-0 right-0 w-[55%] max-h-[70%] bg-white/20 backdrop-blur-md rounded-xl z-[120] overflow-hidden border border-white/20 shadow-lg">
+        <div className="absolute bottom-0 right-0 w-[55%] max-h-[70%] bg-white rounded-xl z-[120] overflow-hidden border border-gray-200 shadow-lg">
           <div className="py-1 overflow-y-auto max-h-[140px]">
-            <button onClick={() => { setSelectedAsset(null); setIsOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left ${!selectedAsset ? 'bg-white/20' : 'hover:bg-white/10'}`}>
+            <button onClick={() => { setSelectedAsset(null); setIsOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left ${!selectedAsset ? 'bg-gray-100' : 'hover:bg-gray-50'}`}>
               <LayoutGrid size={10} className="text-violet-400 shrink-0" />
-              <span className="text-[9px] font-medium text-white/90 truncate">All Investments</span>
+              <span className="text-[9px] font-medium text-gray-900 truncate">All Investments</span>
             </button>
             {dbData.holdings.map((item, idx) => (
-              <button key={idx} onClick={() => { setSelectedAsset(item); setIsOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left ${selectedAsset?.symbol === item.symbol ? 'bg-white/20' : 'hover:bg-white/10'}`}>
-                <div className="w-4 h-4 rounded-full overflow-hidden bg-white/20 shrink-0">
+              <button key={idx} onClick={() => { setSelectedAsset(item); setIsOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left ${selectedAsset?.symbol === item.symbol ? 'bg-gray-100' : 'hover:bg-gray-50'}`}>
+                <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-100 shrink-0">
                   {item.isStrategy && item.topLogos?.length > 0 ? (
                     <div className="flex -space-x-1 h-full items-center justify-center">
                       {item.topLogos.slice(0, 2).map((logo, li) => (
-                        <img key={li} src={logo} className="w-3 h-3 rounded-full object-cover border border-white/25" />
+                        <img key={li} src={logo} className="w-3 h-3 rounded-full object-cover border border-gray-200" />
                       ))}
                     </div>
                   ) : item.logo_url ? (
                     <img src={item.logo_url} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="flex items-center justify-center w-full h-full text-[6px] text-white/70">{item.symbol?.substring(0, 2)}</span>
+                    <span className="flex items-center justify-center w-full h-full text-[6px] text-gray-600">{item.symbol?.substring(0, 2)}</span>
                   )}
                 </div>
-                <span className="text-[9px] font-medium text-white/90 truncate">{item.symbol}</span>
+                <span className="text-[9px] font-medium text-gray-900 truncate">{item.symbol}</span>
                 {(() => {
                   const s = item.settlement_status || holdingSettlementStatus;
                   return s && s !== "confirmed" ? <SettlementBadge status={s} size="xs" /> : null;
