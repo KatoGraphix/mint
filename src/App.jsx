@@ -459,6 +459,62 @@ const App = () => {
     openModal(label, "Coming soon.");
   };
 
+  const ensureInvestmentAccess = useCallback(async () => {
+    if (!supabase) return false;
+
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (userError || !userId) {
+        openModal(
+          "Verification required",
+          "Please first fully complete onboarding and verify your KYC before investing in stocks or strategies."
+        );
+        return false;
+      }
+
+      const [onboardingResult, kycResponse] = await Promise.all([
+        supabase
+          .from("user_onboarding")
+          .select("kyc_status")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(1),
+        fetch("/api/sumsub/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        }),
+      ]);
+
+      const onboardingStatus = onboardingResult?.data?.[0]?.kyc_status;
+      const onboardingComplete = onboardingStatus === "onboarding_complete" || onboardingStatus === "verified";
+
+      let kycVerified = false;
+      if (kycResponse.ok) {
+        const kycResult = await kycResponse.json();
+        kycVerified = kycResult?.success && kycResult?.status === "verified";
+      }
+
+      if (!onboardingComplete || !kycVerified) {
+        openModal(
+          "Verification required",
+          "Please first fully complete onboarding and verify your KYC before investing in stocks or strategies."
+        );
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Investment access check failed", error);
+      openModal(
+        "Verification required",
+        "Please first fully complete onboarding and verify your KYC before investing in stocks or strategies."
+      );
+      return false;
+    }
+  }, []);
+
   const renderPageContent = useCallback((pageName, isPreview = false) => {
     const cachedState = pageStateCache.current[pageName] || {};
     const previewSecurity = isPreview ? (cachedState.selectedSecurity || selectedSecurity) : selectedSecurity;
@@ -1056,7 +1112,12 @@ const App = () => {
         <StockDetailPage
           security={selectedSecurity}
           onBack={goBack}
-          onOpenBuy={() => navigateTo("stockBuy")}
+          onOpenBuy={async () => {
+            const canInvest = await ensureInvestmentAccess();
+            if (canInvest) {
+              navigateTo("stockBuy");
+            }
+          }}
         />
       </SwipeBackWrapper>
     );
@@ -1180,7 +1241,9 @@ const App = () => {
         <FactsheetPage 
           onBack={goBack} 
           strategy={selectedStrategy}
-          onOpenInvest={(strategy) => {
+          onOpenInvest={async (strategy) => {
+            const canInvest = await ensureInvestmentAccess();
+            if (!canInvest) return;
             setSelectedStrategy(strategy);
             navigateTo("investAmount");
           }}
