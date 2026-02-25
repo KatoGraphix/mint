@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import SumsubVerification from "../components/SumsubVerification";
 import MandateViewer from "../components/MandateViewer";
+import BankDetailsStep from "../components/BankDetailsStep";
 import { supabase } from "../lib/supabase";
 import { useProfile } from "../lib/useProfile";
 import "../styles/onboarding-process.css";
@@ -120,6 +121,8 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
   const [agreedSourceOfFunds, setAgreedSourceOfFunds] = useState(false);
   const [sofDropdownOpen, setSofDropdownOpen] = useState(false);
   const [kycAlreadyVerified, setKycAlreadyVerified] = useState(false);
+  const [bankName, setBankName] = useState("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [authStatus, setAuthStatus] = useState({
     isChecked: false,
     isAuthenticated: false,
@@ -251,6 +254,54 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
     } catch (err) {
       setSubmitError(err?.message || "Failed to save onboarding details.");
     } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBankDetailsSubmit = async () => {
+    setIsSubmitting(true);
+    setSubmitError("");
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setSubmitError("Authentication required");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const res = await fetch("/api/onboarding/save-bank-details", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          bank_name: bankName,
+          bank_account_number: bankAccountNumber,
+          existing_onboarding_id: existingOnboardingId || null,
+        }),
+      });
+
+      const result = await res.json();
+      
+      if (!result.success) {
+        setSubmitError(result.error || "Failed to save bank details");
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (result.onboarding_id) {
+        setExistingOnboardingId(result.onboarding_id);
+      }
+
+      setSubmitSuccess("Bank details saved successfully!");
+      goToStep(7);
+      setIsSubmitting(false);
+    } catch (error) {
+      console.error("Bank details submission error:", error);
+      setSubmitError("An error occurred. Please try again.");
       setIsSubmitting(false);
     }
   };
@@ -483,6 +534,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
             )}
           </div>
           {step === 0 ? (
+            // STEP 0 - Overview (unchanged)
             <div>
               <div className="text-center animate-fade-in delay-1">
                 <div className="hero-icon">
@@ -515,6 +567,8 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                 <div className="step-circle">4</div>
                 <div className="step-line"></div>
                 <div className="step-circle">5</div>
+                <div className="step-line"></div>
+                <div className="step-circle">6</div>
               </div>
 
               <div className="step-info animate-fade-in delay-3">
@@ -578,6 +632,16 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                     </div>
                   </div>
                 </div>
+
+                <div className="step-item">
+                  <div className="step-number">6</div>
+                  <div className="step-content">
+                    <div className="step-title">Bank Details</div>
+                    <div className="step-description">
+                      Add your bank account information
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="text-center mt-8 animate-fade-in delay-4">
@@ -592,18 +656,19 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
 
               <div className="text-center mt-6 animate-fade-in delay-4">
                 <p className="text-xs" style={{ color: "hsl(270 15% 60%)" }}>
-                  You'll be taken through our five-step process
+                  You'll be taken through our six-step process
                 </p>
               </div>
             </div>
           ) : step === 1 ? (
+            // STEP 1 - Employment Details (unchanged, keeping original code)
             <div className="w-full max-w-xl mx-auto">
               <div className="text-center mb-8 animate-fade-in delay-1">
                 <p
                   className="text-xs uppercase tracking-[0.2em] mb-2"
                   style={{ color: "hsl(270 20% 55%)" }}
                 >
-                  Step 1 of 5
+                  Step 1 of 6
                 </p>
                 <h2
                   className="text-3xl font-light tracking-tight mb-2"
@@ -822,13 +887,14 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
               </div>
             </div>
           ) : step === 2 ? (
+            // STEP 2 - Sumsub Verification
             <div className="w-full max-w-3xl mx-auto">
               <div className="text-center mb-8 animate-fade-in delay-1">
                 <p
                   className="text-xs uppercase tracking-[0.2em] mb-2"
                   style={{ color: "hsl(270 20% 55%)" }}
                 >
-                  Step 1 of 5
+                  Step 1 of 6
                 </p>
                 <h2
                   className="text-3xl font-light tracking-tight mb-2"
@@ -881,6 +947,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
               )}
             </div>
           ) : step === 3 ? (
+            // STEP 3 - Mandate (unchanged, keeping original code)
             <div className="w-full max-w-3xl mx-auto">
               <div className="text-center animate-fade-in delay-1">
                 <div className="hero-icon">
@@ -900,6 +967,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
               <div className="progress-bar animate-fade-in delay-1">
                 <div className="progress-step active"></div>
                 <div className="progress-step active"></div>
+                <div className="progress-step"></div>
                 <div className="progress-step"></div>
                 <div className="progress-step"></div>
                 <div className="progress-step"></div>
@@ -957,11 +1025,12 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
 
               <div className="text-center mt-6 animate-fade-in delay-4">
                 <p className="text-xs" style={{ color: "hsl(270 15% 60%)" }}>
-                  Step 2 of 5
+                  Step 2 of 6
                 </p>
               </div>
             </div>
           ) : step === 4 ? (
+            // STEP 4 - Risk Disclosure (unchanged, keeping original code)
             <div className="w-full max-w-3xl mx-auto">
               <div className="text-center animate-fade-in delay-1">
                 <div className="hero-icon">
@@ -984,6 +1053,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                 <div className="progress-step active"></div>
                 <div className="progress-step"></div>
                 <div className="progress-step"></div>
+                <div className="progress-step"></div>
               </div>
 
               <div className="agreement-card animate-fade-in delay-2">
@@ -992,7 +1062,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                 <div className="agreement-section">
                   <div className="section-title">1. Investment Risk Warning</div>
                   <div className="agreement-text">
-                    Investing in financial instruments involves risk, including the possible loss of some or all of your principal investment. Past performance is not indicative of future results. The value of investments and the income derived from them may go down as well as up.
+                    Investing in financial instruments involves risk, including the possible loss of some or all of your principal investment. Past performance is not indicative of future results.
                   </div>
                 </div>
 
@@ -1051,11 +1121,12 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
 
               <div className="text-center mt-6 animate-fade-in delay-4">
                 <p className="text-xs" style={{ color: "hsl(270 15% 60%)" }}>
-                  Step 3 of 5
+                  Step 3 of 6
                 </p>
               </div>
             </div>
           ) : step === 5 ? (
+            // STEP 5 - Source of Funds (unchanged, keeping original code)
             <div className="w-full max-w-3xl mx-auto">
               <div className="text-center animate-fade-in delay-1">
                 <div className="hero-icon">
@@ -1077,6 +1148,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                 <div className="progress-step active"></div>
                 <div className="progress-step active"></div>
                 <div className="progress-step active"></div>
+                <div className="progress-step"></div>
                 <div className="progress-step"></div>
               </div>
 
@@ -1189,18 +1261,30 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                     disabled={!sofReady}
                     onClick={() => goToStep(6)}
                   >
-                    Continue to Agreements
+                    Continue to Bank Details
                   </button>
                 </div>
 
                 <div className="text-center mt-6 animate-fade-in delay-4 hide-when-dropdown-open">
                   <p className="text-xs" style={{ color: "hsl(270 15% 60%)" }}>
-                    Step 4 of 5
+                    Step 4 of 6
                   </p>
                 </div>
               </div>
             </div>
+          ) : step === 6 ? (
+            // STEP 6 - BANK DETAILS (NEW!)
+            <BankDetailsStep
+              bankName={bankName}
+              accountNumber={bankAccountNumber}
+              onBankChange={setBankName}
+              onAccountNumberChange={setBankAccountNumber}
+              onContinue={handleBankDetailsSubmit}
+              onBack={handleBack}
+              isSubmitting={isSubmitting}
+            />
           ) : (
+            // STEP 7 - FINAL AGREEMENTS
             <div className="w-full max-w-3xl mx-auto">
               <div className="text-center animate-fade-in delay-1">
                 <div className="hero-icon">
@@ -1218,6 +1302,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
               </div>
 
               <div className="progress-bar animate-fade-in delay-1">
+                <div className="progress-step active"></div>
                 <div className="progress-step active"></div>
                 <div className="progress-step active"></div>
                 <div className="progress-step active"></div>
@@ -1315,7 +1400,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
 
               <div className="text-center mt-6 animate-fade-in delay-4">
                 <p className="text-xs" style={{ color: "hsl(270 15% 60%)" }}>
-                  Step 5 of 5 - Final step to complete your onboarding
+                  Step 6 of 6 - Final step to complete your onboarding
                 </p>
               </div>
             </div>
