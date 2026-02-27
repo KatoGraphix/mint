@@ -118,6 +118,11 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
   const [sourceOfFundsOther, setSourceOfFundsOther] = useState("");
   const [expectedMonthlyInvestment, setExpectedMonthlyInvestment] = useState("");
   const [agreedSourceOfFunds, setAgreedSourceOfFunds] = useState(false);
+  const [bankName, setBankName] = useState("");
+  const [accountHolder, setAccountHolder] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [branchCode, setBranchCode] = useState("");
+  const [bankDetailsError, setBankDetailsError] = useState("");
   const [sofDropdownOpen, setSofDropdownOpen] = useState(false);
   const [kycAlreadyVerified, setKycAlreadyVerified] = useState(false);
   const [authStatus, setAuthStatus] = useState({
@@ -155,7 +160,9 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
   };
 
   const handleBack = () => {
-    if (step === 6) {
+    if (step === 7) {
+      goToStep(6);
+    } else if (step === 6) {
       goToStep(5);
     } else if (step === 5) {
       goToStep(4);
@@ -364,8 +371,19 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
   const showStudentSection = employmentStatus === "student";
   const agreementReady = agreedTerms && agreedPrivacy;
   const sofReady = sourceOfFunds && agreedSourceOfFunds;
+  const bankDetailsReady =
+    bankName.trim() &&
+    accountHolder.trim() &&
+    accountNumber.trim() &&
+    branchCode.trim();
 
   const handleFinalComplete = async () => {
+    setBankDetailsError("");
+    if (!bankDetailsReady) {
+      setBankDetailsError("Please complete all bank details before finishing onboarding.");
+      return;
+    }
+
     if (!supabase) {
       if (onComplete) onComplete();
       return;
@@ -390,6 +408,30 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
           } catch (e) {
             console.error("Mandate save error during completion:", e);
           }
+        }
+
+        const bankDetailsPayload = {
+          bank_name: bankName.trim(),
+          account_holder: accountHolder.trim(),
+          account_number: accountNumber.trim(),
+          branch_code: branchCode.trim(),
+          existing_onboarding_id: existingOnboardingId || null,
+        };
+
+        const bankDetailsRes = await fetch("/api/onboarding/save-bank-details", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(bankDetailsPayload),
+        });
+        const bankDetailsResult = await bankDetailsRes.json();
+        if (!bankDetailsRes.ok || !bankDetailsResult.success) {
+          throw new Error(bankDetailsResult.error || "Failed to save bank details.");
+        }
+        if (bankDetailsResult.onboarding_id) {
+          setExistingOnboardingId(bankDetailsResult.onboarding_id);
         }
 
         const completePayload = {
@@ -515,6 +557,8 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                 <div className="step-circle">4</div>
                 <div className="step-line"></div>
                 <div className="step-circle">5</div>
+                <div className="step-line"></div>
+                <div className="step-circle">6</div>
               </div>
 
               <div className="step-info animate-fade-in delay-3">
@@ -578,6 +622,16 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                     </div>
                   </div>
                 </div>
+
+                <div className="step-item">
+                  <div className="step-number">6</div>
+                  <div className="step-content">
+                    <div className="step-title">Bank Details</div>
+                    <div className="step-description">
+                      Capture your payout bank account details
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="text-center mt-8 animate-fade-in delay-4">
@@ -592,7 +646,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
 
               <div className="text-center mt-6 animate-fade-in delay-4">
                 <p className="text-xs" style={{ color: "hsl(270 15% 60%)" }}>
-                  You'll be taken through our five-step process
+                  You'll be taken through our six-step process
                 </p>
               </div>
             </div>
@@ -603,7 +657,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                   className="text-xs uppercase tracking-[0.2em] mb-2"
                   style={{ color: "hsl(270 20% 55%)" }}
                 >
-                  Step 1 of 5
+                  Step 1 of 6
                 </p>
                 <h2
                   className="text-3xl font-light tracking-tight mb-2"
@@ -828,7 +882,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                   className="text-xs uppercase tracking-[0.2em] mb-2"
                   style={{ color: "hsl(270 20% 55%)" }}
                 >
-                  Step 1 of 5
+                  Step 1 of 6
                 </p>
                 <h2
                   className="text-3xl font-light tracking-tight mb-2"
@@ -903,6 +957,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                 <div className="progress-step"></div>
                 <div className="progress-step"></div>
                 <div className="progress-step"></div>
+                <div className="progress-step"></div>
               </div>
 
               <div className="animate-fade-in delay-2" style={{
@@ -957,7 +1012,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
 
               <div className="text-center mt-6 animate-fade-in delay-4">
                 <p className="text-xs" style={{ color: "hsl(270 15% 60%)" }}>
-                  Step 2 of 5
+                  Step 2 of 6
                 </p>
               </div>
             </div>
@@ -1051,7 +1106,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
 
               <div className="text-center mt-6 animate-fade-in delay-4">
                 <p className="text-xs" style={{ color: "hsl(270 15% 60%)" }}>
-                  Step 3 of 5
+                  Step 3 of 6
                 </p>
               </div>
             </div>
@@ -1077,6 +1132,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                 <div className="progress-step active"></div>
                 <div className="progress-step active"></div>
                 <div className="progress-step active"></div>
+                <div className="progress-step"></div>
                 <div className="progress-step"></div>
               </div>
 
@@ -1189,18 +1245,18 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                     disabled={!sofReady}
                     onClick={() => goToStep(6)}
                   >
-                    Continue to Agreements
+                    Continue to Contract Agreement
                   </button>
                 </div>
 
                 <div className="text-center mt-6 animate-fade-in delay-4 hide-when-dropdown-open">
                   <p className="text-xs" style={{ color: "hsl(270 15% 60%)" }}>
-                    Step 4 of 5
+                    Step 4 of 6
                   </p>
                 </div>
               </div>
             </div>
-          ) : (
+          ) : step === 6 ? (
             <div className="w-full max-w-3xl mx-auto">
               <div className="text-center animate-fade-in delay-1">
                 <div className="hero-icon">
@@ -1223,6 +1279,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                 <div className="progress-step active"></div>
                 <div className="progress-step active"></div>
                 <div className="progress-step active"></div>
+                <div className="progress-step"></div>
               </div>
 
               <div className="agreement-card animate-fade-in delay-2">
@@ -1307,16 +1364,123 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                   type="button"
                   className={`continue-button agreement-continue ${agreementReady ? "enabled" : ""}`}
                   disabled={!agreementReady}
-                  onClick={handleFinalComplete}
+                  onClick={() => goToStep(7)}
                 >
-                  Accept and Continue
+                  Continue to Bank Details
                 </button>
               </div>
 
               <div className="text-center mt-6 animate-fade-in delay-4">
                 <p className="text-xs" style={{ color: "hsl(270 15% 60%)" }}>
-                  Step 5 of 5 - Final step to complete your onboarding
+                  Step 5 of 6
                 </p>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full max-w-3xl mx-auto">
+              <div className="text-center animate-fade-in delay-1">
+                <div className="hero-icon">
+                  <WalletIcon width={48} height={48} />
+                </div>
+                <h2
+                  className="text-3xl font-light tracking-tight mb-2"
+                  style={{ color: "hsl(270 30% 25%)" }}
+                >
+                  Bank Details
+                </h2>
+                <p className="text-sm mb-6" style={{ color: "hsl(270 20% 50%)" }}>
+                  Provide your payout bank account details for withdrawals and verification
+                </p>
+              </div>
+
+              <div className="progress-bar animate-fade-in delay-1">
+                <div className="progress-step active"></div>
+                <div className="progress-step active"></div>
+                <div className="progress-step active"></div>
+                <div className="progress-step active"></div>
+                <div className="progress-step active"></div>
+                <div className="progress-step active"></div>
+              </div>
+
+              <div className="space-y-5">
+                <div className="animate-fade-in delay-2">
+                  <label htmlFor="bank-name">Bank Name</label>
+                  <div className="glass-field">
+                    <input
+                      type="text"
+                      id="bank-name"
+                      placeholder="e.g. Standard Bank"
+                      value={bankName}
+                      onChange={(event) => setBankName(event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="animate-fade-in delay-2">
+                  <label htmlFor="account-holder">Account Holder</label>
+                  <div className="glass-field">
+                    <input
+                      type="text"
+                      id="account-holder"
+                      placeholder="Account holder full name"
+                      value={accountHolder}
+                      onChange={(event) => setAccountHolder(event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid-2 animate-fade-in delay-3">
+                  <div>
+                    <label htmlFor="account-number">Account Number</label>
+                    <div className="glass-field">
+                      <input
+                        type="text"
+                        id="account-number"
+                        inputMode="numeric"
+                        placeholder="Account number"
+                        value={accountNumber}
+                        onChange={(event) => setAccountNumber(event.target.value.replace(/[^0-9]/g, ""))}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="branch-code">Branch Code</label>
+                    <div className="glass-field">
+                      <input
+                        type="text"
+                        id="branch-code"
+                        inputMode="numeric"
+                        placeholder="Branch code"
+                        value={branchCode}
+                        onChange={(event) => setBranchCode(event.target.value.replace(/[^0-9]/g, ""))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {bankDetailsError && (
+                  <p className="text-center animate-fade-in" style={{ color: "#ef4444", fontSize: "12px" }}>
+                    {bankDetailsError}
+                  </p>
+                )}
+
+                <div className="text-center mt-8 animate-fade-in delay-4">
+                  <button
+                    type="button"
+                    className={`continue-button agreement-continue ${bankDetailsReady ? "enabled" : ""}`}
+                    disabled={!bankDetailsReady || isSubmitting}
+                    onClick={handleFinalComplete}
+                  >
+                    {isSubmitting ? "Saving..." : "Save Bank Details & Complete"}
+                  </button>
+                </div>
+
+                <div className="text-center mt-6 animate-fade-in delay-4">
+                  <p className="text-xs" style={{ color: "hsl(270 15% 60%)" }}>
+                    Step 6 of 6 - Final step to complete your onboarding
+                  </p>
+                </div>
               </div>
             </div>
           )}
