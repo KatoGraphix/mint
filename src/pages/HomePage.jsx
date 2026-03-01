@@ -722,7 +722,7 @@ const HomePage = ({
   return (
     <div className="min-h-screen bg-slate-50 pb-[env(safe-area-inset-bottom)] text-slate-900">
       <div className="rounded-b-[36px] bg-gradient-to-b from-[#111111] via-[#3b1b7a] to-[#5b21b6] px-4 pb-12 pt-12 text-white md:px-8">
-        <div className="mx-auto flex w-full max-w-sm flex-col gap-6 md:max-w-md">
+        <div className="mx-auto flex w-full max-w-sm flex-col gap-6 md:max-w-3xl lg:max-w-6xl">
           <header className="relative flex items-center justify-between text-white">
             <div className="flex items-center gap-3">
               {profile.avatarUrl ? (
@@ -849,8 +849,8 @@ const HomePage = ({
         </div>
       </div>
 
-      <div className="mx-auto -mt-10 flex w-full max-w-sm flex-col gap-6 px-4 pb-10 md:max-w-md md:px-8">
-        <section className="grid grid-cols-4 gap-3 text-[11px] font-medium">
+      <div className="mx-auto -mt-10 flex w-full max-w-sm flex-col gap-6 px-4 pb-10 md:max-w-3xl md:px-8 lg:max-w-6xl">
+        <section className="grid grid-cols-4 gap-3 text-[11px] font-medium lg:grid-cols-8">
           {[
             { label: <>Open<br />Strategies</>, icon: LayoutGrid, onClick: onOpenStrategies || onOpenInvest },
             { label: "Markets", icon: TrendingUp, onClick: onOpenMarkets || onOpenInvest },
@@ -882,6 +882,8 @@ const HomePage = ({
           />
         ) : null}
 
+        <div className="grid gap-6 xl:grid-cols-12">
+          <div className="space-y-6 xl:col-span-7">
         {/* Best Performing Assets */}
         <section>
           <div className="flex items-end justify-between px-5 mb-3">
@@ -1083,6 +1085,20 @@ const HomePage = ({
           )}
         </section>
 
+        {transactionHistory.length > 0 ? (
+          <TransactionHistorySection items={transactionHistory} onViewAll={onOpenActivity} />
+        ) : (
+          <section className="rounded-3xl bg-white p-5 shadow-md">
+            <p className="text-sm font-semibold text-slate-900 mb-3">Recent Activity</p>
+            <div className="text-center py-4">
+              <p className="text-xs text-slate-500">No transactions yet</p>
+              <p className="text-xs text-slate-400 mt-1">Your activity will appear here</p>
+            </div>
+          </section>
+        )}
+          </div>
+
+          <div className="space-y-6 xl:col-span-5">
         {/* Investment Goals Table */}
         <section>
           <div className="flex items-end justify-between px-5 mb-3">
@@ -1256,18 +1272,8 @@ const HomePage = ({
             )}
           </div>
         </section>
-        
-        {transactionHistory.length > 0 ? (
-          <TransactionHistorySection items={transactionHistory} onViewAll={onOpenActivity} />
-        ) : (
-          <section className="rounded-3xl bg-white p-5 shadow-md">
-            <p className="text-sm font-semibold text-slate-900 mb-3">Recent Activity</p>
-            <div className="text-center py-4">
-              <p className="text-xs text-slate-500">No transactions yet</p>
-              <p className="text-xs text-slate-400 mt-1">Your activity will appear here</p>
-            </div>
-          </section>
-        )}
+          </div>
+        </div>
 
       </div>
 
