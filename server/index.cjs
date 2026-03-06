@@ -3,6 +3,7 @@ const cors = require("cors");
 const crypto = require("crypto");
 const { Pool } = require("pg");
 const truIDClient = require("./truidClient.cjs");
+const { sendOrderFilledEmailForHolding } = require("./orderFilledEmail.cjs");
 
 const pgPool = process.env.DATABASE_URL ? new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -4009,6 +4010,20 @@ app.post("/api/webhooks/broker", async (req, res) => {
 
   try {
     const db = supabaseAdmin || supabase;
+    let priorHoldingStatus = null;
+
+    if (holdingId) {
+      try {
+        const { data: h } = await db
+          .from("stock_holdings")
+          .select("settlement_status")
+          .eq("id", holdingId)
+          .maybeSingle();
+        priorHoldingStatus = h?.settlement_status || null;
+      } catch (_) {
+        priorHoldingStatus = null;
+      }
+    }
 
     if (status === "filled" || status === "executed" || status === "confirmed") {
       if (transactionId) {
@@ -4031,6 +4046,31 @@ app.post("/api/webhooks/broker", async (req, res) => {
       }
 
       console.log(`[Broker Webhook] Settlement CONFIRMED for tx:${transactionId} holding:${holdingId}`);
+
+      const shouldSendOrderFilledEmail =
+        Boolean(holdingId) &&
+        priorHoldingStatus !== SETTLEMENT_STATUSES.CONFIRMED &&
+        Boolean(process.env.RESEND_API_KEY);
+
+      if (shouldSendOrderFilledEmail) {
+        try {
+          const result = await sendOrderFilledEmailForHolding({
+            supabaseAdmin,
+            db,
+            holdingId,
+            executionPrice,
+            executionQuantity,
+            orderReference: brokerReference || transactionId || holdingId,
+          });
+          if (result?.skipped) {
+            console.log("[Broker Webhook] Order filled email skipped:", result.reason);
+          } else {
+            console.log("[Broker Webhook] Order filled email sent:", result.to);
+          }
+        } catch (emailErr) {
+          console.error("[Broker Webhook] Failed to send order filled email:", emailErr.message);
+        }
+      }
     } else if (status === "rejected" || status === "failed") {
       if (transactionId) {
         await db.from("transactions").update({ settlement_status: SETTLEMENT_STATUSES.FAILED }).eq("id", transactionId);
