@@ -134,6 +134,7 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
   const [submitSuccess, setSubmitSuccess] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showProceed, setShowProceed] = useState(false);
+  const [kycReviewState, setKycReviewState] = useState(null);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [existingOnboardingId, setExistingOnboardingId] = useState(null);
@@ -542,14 +543,35 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
           body: JSON.stringify({ userId }),
         });
         const data = await res.json();
-        if (data.success && data.status === "verified") {
-          setKycAlreadyVerified(true);
-          if (step === 2) setShowProceed(true);
+        if (data.success && data.status) {
+          if (data.status === "verified") {
+            setKycAlreadyVerified(true);
+            setKycReviewState("verified");
+            if (step === 2) setShowProceed(true);
+            return;
+          }
+
+          if (data.status === "pending" || data.status === "needs_resubmission") {
+            setKycReviewState(data.status);
+            if (step === 2) setShowProceed(true);
+          }
         }
       } catch {
       }
     };
+
     checkKycStatus();
+
+    let intervalId;
+    if (step === 2) {
+      intervalId = window.setInterval(checkKycStatus, 5000);
+    }
+
+    return () => {
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
   }, [step]);
 
   const showEmployedSection =
@@ -849,6 +871,16 @@ const OnboardingProcessPage = ({ onBack, onComplete }) => {
                     ? "Your identity has already been verified"
                     : "Verify your identity securely with Sumsub"}
                 </p>
+                {!kycAlreadyVerified && kycReviewState === "pending" ? (
+                  <p className="text-xs mt-3" style={{ color: "hsl(214 70% 45%)" }}>
+                    Your KYC is under review. You can continue to the next step while we wait for Sumsub's response.
+                  </p>
+                ) : null}
+                {!kycAlreadyVerified && kycReviewState === "needs_resubmission" ? (
+                  <p className="text-xs mt-3" style={{ color: "hsl(35 90% 35%)" }}>
+                    Your KYC needs attention, but you can continue onboarding for now while status updates are pending.
+                  </p>
+                ) : null}
               </div>
               {kycAlreadyVerified ? (
                 <div className="text-center py-8 animate-fade-in delay-2">
