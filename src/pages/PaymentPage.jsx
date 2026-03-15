@@ -31,6 +31,16 @@ const PaymentPage = ({ onBack, strategy, amount, baseAmount, shareCount, onSucce
 
     setPaymentStatus("processing");
 
+    const isStrategy = !!(strategy?.holdings || strategy?.risk_level || strategy?.slug);
+    const targetId = isStrategy
+      ? (strategy?.strategyId || strategy?.id)
+      : strategy?.id;
+    const emailPart = (profile?.email || "user")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "") || "user";
+    const ref = `MINT-${emailPart}-${targetId || "unknown"}-${Date.now()}`.slice(0, 100);
+
     const paystack = new window.PaystackPop();
     paystack.newTransaction({
       key: publicKey,
@@ -38,7 +48,7 @@ const PaymentPage = ({ onBack, strategy, amount, baseAmount, shareCount, onSucce
       amount: chargeAmount,
       currency: "ZAR",
       channels: ["card", "bank", "bank_transfer"],
-      ref: `MINT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      ref,
       metadata: {
         strategy_id: strategy?.id,
         strategy_name: strategy?.name,
