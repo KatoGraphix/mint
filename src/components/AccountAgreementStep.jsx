@@ -562,11 +562,21 @@ export default function AccountAgreementStep({
 
       // Merge signing details + all required flags into sumsub_raw
       try {
-        const { data: existing } = await supabase
+        const recordQuery = supabase
           .from("user_onboarding")
-          .select("sumsub_raw")
-          .eq("user_id", userId)
-          .maybeSingle();
+          .select("id, sumsub_raw")
+          .eq("user_id", userId);
+
+        const { data: existing } = existingOnboardingId
+          ? await recordQuery.eq("id", existingOnboardingId).maybeSingle()
+          : await recordQuery.order("created_at", { ascending: false }).limit(1).maybeSingle();
+
+        const targetOnboardingId = existing?.id || existingOnboardingId || null;
+
+        if (!targetOnboardingId) {
+          throw new Error("No onboarding record found to store signed agreement metadata.");
+        }
+
         let raw = {};
         if (existing?.sumsub_raw) {
           raw = typeof existing.sumsub_raw === "string" ? JSON.parse(existing.sumsub_raw) : existing.sumsub_raw;
@@ -585,7 +595,7 @@ export default function AccountAgreementStep({
         await supabase.from("user_onboarding").update({
           kyc_status: "onboarding_complete",
           sumsub_raw: JSON.stringify(raw),
-        }).eq("user_id", userId);
+        }).eq("id", targetOnboardingId).eq("user_id", userId);
       } catch (dbErr) {
         console.warn("Onboarding DB update failed (non-critical):", dbErr?.message);
         await supabase.from("user_onboarding").update({ kyc_status: "onboarding_complete" }).eq("user_id", userId);

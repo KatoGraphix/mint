@@ -4438,6 +4438,9 @@ app.post("/api/onboarding/complete", async (req, res) => {
       bank_name,
       bank_account_number,
       bank_branch_code,
+      signed_agreement_url,
+      signed_at,
+      downloaded_at,
     } = req.body;
 
     const userId = user.id;
@@ -4521,7 +4524,7 @@ app.post("/api/onboarding/complete", async (req, res) => {
       if (inserted?.[0]?.id) onboardingId = inserted[0].id;
     }
 
-    if (bankDetails && onboardingId) {
+    if ((bankDetails || signed_agreement_url || signed_at || downloaded_at) && onboardingId) {
       try {
         const { data: current } = await db
           .from("user_onboarding")
@@ -4533,7 +4536,21 @@ app.post("/api/onboarding/complete", async (req, res) => {
         if (current?.sumsub_raw) {
           rawData = typeof current.sumsub_raw === "string" ? JSON.parse(current.sumsub_raw) : current.sumsub_raw;
         }
-        rawData.bank_details = bankDetails;
+        if (bankDetails) {
+          rawData.bank_details = bankDetails;
+        }
+
+        if (signed_agreement_url) {
+          rawData.signed_agreement_url = signed_agreement_url;
+        }
+
+        if (signed_at) {
+          rawData.signed_at = signed_at;
+        }
+
+        if (downloaded_at) {
+          rawData.downloaded_at = downloaded_at;
+        }
 
         await db
           .from("user_onboarding")

@@ -14,7 +14,18 @@ export default async function handler(req, res) {
     const { data: { user }, error: authErr } = await db.auth.getUser(token);
     if (authErr || !user) return res.status(401).json({ success: false, error: "Invalid session" });
 
-    const { existing_onboarding_id, bank_name, bank_account_name, bank_account_type, bank_account_number, bank_branch_code, tax_number } = req.body;
+    const {
+      existing_onboarding_id,
+      bank_name,
+      bank_account_name,
+      bank_account_type,
+      bank_account_number,
+      bank_branch_code,
+      tax_number,
+      signed_agreement_url,
+      signed_at,
+      downloaded_at,
+    } = req.body;
     const userId = user.id;
 
     try {
@@ -98,7 +109,7 @@ export default async function handler(req, res) {
       if (inserted?.[0]?.id) onboardingId = inserted[0].id;
     }
 
-    if ((bankDetails || tax_number) && onboardingId) {
+    if ((bankDetails || tax_number || signed_agreement_url || signed_at || downloaded_at) && onboardingId) {
       try {
         const { data: current } = await db
           .from("user_onboarding")
@@ -117,6 +128,18 @@ export default async function handler(req, res) {
         
         if (tax_number) {
           rawData.tax_details = { tax_number, savedAt: new Date().toISOString() };
+        }
+
+        if (signed_agreement_url) {
+          rawData.signed_agreement_url = signed_agreement_url;
+        }
+
+        if (signed_at) {
+          rawData.signed_at = signed_at;
+        }
+
+        if (downloaded_at) {
+          rawData.downloaded_at = downloaded_at;
         }
 
         await db
