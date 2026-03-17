@@ -1903,6 +1903,49 @@ const NewPortfolioPage = ({ onOpenNotifications, onOpenInvest, onOpenStrategies,
                             </button>
                           );
                         })}
+                        
+                        {/* Sell Strategy Button */}
+                        <div className="pt-2">
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!window.confirm(`Are you sure you want to sell your entire holding in ${stock.name}? This will liquidate all constituent assets.`)) return;
+                              
+                              try {
+                                const { data: { session } } = await supabase.auth.getSession();
+                                const token = session?.access_token;
+                                if (!token) return;
+
+                                const res = await fetch("/api/strategy/liquidate", {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                    "Authorization": `Bearer ${token}`
+                                  },
+                                  body: JSON.stringify({ strategyId: stock.strategyId })
+                                });
+
+                                const json = await res.json();
+                                if (json.success) {
+                                  alert(`Successfully sold ${stock.name} for ${formatCurrency(json.liquidatedAmount)}`);
+                                  // Refresh everything
+                                  refetchInvestments();
+                                  refetchStrategies();
+                                  setExpandedStrategyId(null);
+                                } else {
+                                  alert(`Failed to liquidate: ${json.error || "Unknown error"}`);
+                                }
+                              } catch (err) {
+                                console.error("Liquidation error:", err);
+                                alert("An error occurred during liquidation.");
+                              }
+                            }}
+                            className="w-full py-2.5 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold uppercase tracking-wider transition hover:bg-rose-100 active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm"
+                          >
+                            <TrendingDown className="h-3.5 w-3.5" />
+                            Sell Strategy
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

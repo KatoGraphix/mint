@@ -3028,6 +3028,121 @@ app.post("/api/user/ensure-mint-number", async (req, res) => {
   }
 });
 
+app.post("/api/strategy/liquidate", async (req, res) => {
+  try {
+    console.log("[liquidate-strategy] === ENDPOINT CALLED ===");
+    const { strategyId } = req.body;
+
+    if (!supabase) {
+      return res.status(500).json({ success: false, error: "Database not connected" });
+    }
+
+    const { user, error: authError } = await authenticateUser(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: authError || "Unauthorized" });
+    }
+    const userId = user.id;
+    const db = supabaseAdmin || supabase;
+
+    if (!strategyId) {
+      return res.status(400).json({ success: false, error: "Missing strategyId" });
+    }
+
+    // 1. Fetch current holdings for this strategy
+    const { data: holdings, error: holdingsError } = await db
+      .from("stock_holdings")
+      .select("id, security_id, quantity, avg_fill, market_value")
+      .eq("user_id", userId)
+      .eq("strategy_id", strategyId);
+
+    if (holdingsError) {
+      console.error("[liquidate-strategy] Error fetching holdings:", holdingsError);
+      return res.status(500).json({ success: false, error: "Failed to fetch holdings for liquidation" });
+    }
+
+    if (!holdings || holdings.length === 0) {
+      return res.status(400).json({ success: false, error: "No holdings found for this strategy" });
+    }
+
+    // 2. Fetch strategy details (for name)
+    const { data: strategyData } = await db
+      .from("strategies")
+      .select("name")
+      .eq("id", strategyId)
+      .maybeSingle();
+
+    const strategyName = strategyData?.name || "Strategy";
+
+    // 3. Calculate total value with currency awareness
+    // We'll fetch the securities for these holdings to check their exchange
+    const securityIds = holdings.map(h => h.security_id);
+    const { data: securities } = await db
+      .from("securities")
+      .select("id, exchange")
+      .in("id", securityIds);
+    
+    const secMap = {};
+    (securities || []).forEach(s => { secMap[s.id] = s; });
+
+    // For a prototype/test, we'll use a rough USDZAR rate of 19.0
+    // Real implementation would fetch this via an API.
+    const USDZAR_RATE = 19.0;
+
+    const totalValueCents = holdings.reduce((sum, h) => {
+      const sec = secMap[h.security_id];
+      const isUSD = sec?.exchange === "NASDAQ" || sec?.exchange === "NYSE";
+      const value = h.market_value || 0;
+      
+      // If it's USD, market_value is in USD cents. Multiply by rate to get ZAR cents.
+      const valInZarCents = isUSD ? value * USDZAR_RATE : value;
+      return sum + valInZarCents;
+    }, 0);
+
+    const totalValueRands = totalValueCents / 100;
+
+    // 4. Create a transaction record (Sale/Liquidation)
+    const { error: txError } = await db.from("transactions").insert({
+      user_id: userId,
+      name: `Liquidation: ${strategyName}`,
+      amount: -totalValueCents, 
+      direction: "credit", 
+      transaction_date: new Date().toISOString(),
+      store_reference: `LIQ-${strategyId.slice(0,8)}-${Date.now()}`,
+      status: "completed"
+    });
+
+    if (txError) {
+      console.error("[liquidate-strategy] Error creating transaction:", txError);
+      return res.status(500).json({ success: false, error: "Failed to record liquidation transaction" });
+    }
+
+    // 5. Zero out or Delete the holdings
+    // For a prototype, deleting is cleanest to reflect they are gone.
+    const { error: deleteError } = await db
+      .from("stock_holdings")
+      .delete()
+      .eq("user_id", userId)
+      .eq("strategy_id", strategyId);
+
+    if (deleteError) {
+      console.error("[liquidate-strategy] Error deleting holdings:", deleteError);
+      return res.status(500).json({ success: false, error: "Failed to clear holdings" });
+    }
+
+    console.log(`[liquidate-strategy] Successfully liquidated R${totalValueRands} for user ${userId} (USDZAR used: ${USDZAR_RATE})`);
+    res.json({ 
+      success: true, 
+      message: "Liquidation successful", 
+      liquidatedAmount: totalValueRands,
+      isTest: true
+    });
+
+  } catch (error) {
+    console.error("[liquidate-strategy] Unhandled error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get("/api/user/holdings", async (req, res) => {
   try {
     if (!supabase) {
@@ -4598,9 +4713,10 @@ app.get("/api/onboarding/status", async (req, res) => {
       } else {
         const kycDone = data.kyc_status === "approved" || data.kyc_status === "verified";
         let taxDone = false, bankDone = false, mandateAgreed = false, riskDone = false, sofDone = false, termsDone = false;
+        let raw = {};
         if (data.sumsub_raw) {
           try {
-            const raw = typeof data.sumsub_raw === "string" ? JSON.parse(data.sumsub_raw) : data.sumsub_raw;
+            raw = typeof data.sumsub_raw === "string" ? JSON.parse(data.sumsub_raw) : data.sumsub_raw;
             if (kycDone && raw?.signed_at) {
               taxDone = true; bankDone = true; mandateAgreed = true;
               riskDone = true; sofDone = true; termsDone = true;
