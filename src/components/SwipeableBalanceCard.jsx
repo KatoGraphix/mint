@@ -265,7 +265,7 @@ const SwipeableBalanceCard = ({
 
   return (
     <div 
-      className="relative w-full h-full z-10 select-none touch-pan-y"
+      className="relative z-10 w-full min-h-[220px] select-none touch-pan-y"
       style={{ perspective: "1200px" }}
       onTouchStart={handleDragStart}
       onTouchEnd={handleDragEnd}
@@ -273,7 +273,7 @@ const SwipeableBalanceCard = ({
       onMouseUp={handleDragEnd}
     >
       <div 
-        className="relative w-full h-full transition-transform duration-700 ease-out"
+        className="relative h-full min-h-[220px] w-full transition-transform duration-700 ease-out"
         style={{ 
           transform: `rotateY(${rotation}deg)`,
           transformStyle: "preserve-3d"
