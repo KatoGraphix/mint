@@ -64,6 +64,7 @@ const SwipeableBalanceCard = ({
   forceVisible,
   mintNumber: mintNumberProp,
   onBuyPress,
+  onClick,
 }) => {
   const { profile } = useProfile();
 
@@ -80,6 +81,7 @@ const SwipeableBalanceCard = ({
   const [rotation, setRotation] = useState(isBackFacing ? 180 : 0);
   const [isAnimating, setIsAnimating] = useState(false);
   const dragStartX = useRef(null);
+  const didSwipe = useRef(false);
 
   useEffect(() => {
     // Sync with parent prop if it changes
@@ -90,6 +92,7 @@ const SwipeableBalanceCard = ({
     if (isAnimating) return;
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     dragStartX.current = clientX;
+    didSwipe.current = false;
   };
 
   const handleDragEnd = (e) => {
@@ -99,6 +102,7 @@ const SwipeableBalanceCard = ({
     const threshold = 50;
 
     if (Math.abs(diff) > threshold) {
+      didSwipe.current = true;
       setIsAnimating(true);
       // Flip 180 degrees in the direction of the swipe
       setRotation((prev) => (diff > 0 ? prev + 180 : prev - 180));
@@ -692,7 +696,19 @@ const SwipeableBalanceCard = ({
   };
 
   return (
-    <div className="relative w-full h-full z-10 bg-white rounded-[28px] overflow-hidden shadow-sm border border-slate-100">
+    <div
+      className="relative w-full h-full z-10 bg-white rounded-[28px] overflow-hidden shadow-sm border border-slate-100 cursor-pointer"
+      onTouchStart={handleDragStart}
+      onTouchEnd={handleDragEnd}
+      onMouseDown={handleDragStart}
+      onMouseUp={handleDragEnd}
+      onClick={(e) => {
+        // Only fire onClick if it wasn't a swipe gesture and the click didn't originate from an inner button
+        if (onClick && !didSwipe.current && !e.target.closest('button')) {
+          onClick(e);
+        }
+      }}
+    >
       {isConnected && (
         <div className="absolute top-2 right-3 z-20 flex items-center gap-1.5">
           {showUpdatedText && (
@@ -722,7 +738,7 @@ const SwipeableBalanceCard = ({
         </div>
       )}
       <div className="relative z-10 flex flex-col h-full text-slate-700">
-        {!isBackFacing ? (
+        {(rotation % 360 === 0) ? (
           /* CARD FRONT */
           <div className="flex flex-col h-full p-8 justify-between">
             <div className="space-y-1">

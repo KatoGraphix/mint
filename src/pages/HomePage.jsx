@@ -680,6 +680,7 @@ const HomePage = ({
                     isBackFacing
                     forceVisible={isCardVisible}
                     mintNumber={profile.mintNumber}
+                    onClick={onOpenInvestments}
                   />
                 </div>
               </div>
