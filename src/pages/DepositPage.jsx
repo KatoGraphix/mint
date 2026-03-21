@@ -44,6 +44,7 @@ const DepositPage = ({ onBack }) => {
   const [copied, setCopied] = useState(null);
   const [reference, setReference] = useState("");
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     // Reference should be user's MINT ID
@@ -62,11 +63,12 @@ const DepositPage = ({ onBack }) => {
   };
 
   const handleConfirmDeposit = async () => {
-    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+    if (isSubmitting || !amount || isNaN(amount) || parseFloat(amount) <= 0) {
       alert("Please enter a valid deposit amount");
       return;
     }
 
+    setIsSubmitting(true);
     try {
       // Record the pending transaction
       const { error } = await supabase.from("transactions").insert([
@@ -88,6 +90,8 @@ const DepositPage = ({ onBack }) => {
     } catch (err) {
       console.error("Error recording deposit:", err);
       alert("Failed to record deposit. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -119,7 +123,7 @@ const DepositPage = ({ onBack }) => {
         <div className="flex items-center gap-6 mb-10">
           <button
             onClick={onBack}
-            className="w-10 h-10 bg-zinc-900 rounded-full flex items-center justify-center hover:bg-zinc-800 transition-colors"
+            className="w-10 h-10 bg-zinc-900 text-white rounded-full flex items-center justify-center hover:bg-zinc-800 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -144,31 +148,31 @@ const DepositPage = ({ onBack }) => {
               className="w-full bg-zinc-900 border-none rounded-2xl py-6 pl-12 pr-6 text-3xl font-bold focus:ring-2 focus:ring-white/20 placeholder:text-zinc-700 outline-none"
             />
           </div>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-zinc-500 mt-3">
             Funds will reflect in your wallet balance once confirmed.
           </p>
         </div>
 
         {/* Bank Details Section */}
-        <div className="space-y-6">
+        <div className="space-y-6 mt-3">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest">
               Standard Bank Details
             </h2>
           </div>
 
-          <div className="bg-zinc-900/50 border border-white/5 rounded-3xl overflow-hidden divide-y divide-white/5">
+          <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden divide-y divide-slate-200">
             <div className="p-6">
               <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">
                 Payment Reference
               </p>
               <div className="flex items-center justify-between">
-                <p className="text-xl font-mono text-white">
+                <p className="text-xl font-mono text-slate-900">
                   {reference || "Generating..."}
                 </p>
                 <button
                   onClick={() => handleCopy(reference, "ref")}
-                  className="p-2 text-zinc-500 hover:text-white transition-colors"
+                  className="p-2 text-zinc-500 hover:text-slate-900 transition-colors"
                 >
                   {copied === "ref" ? (
                     <Check className="w-5 h-5 text-green-500" />
@@ -191,11 +195,11 @@ const DepositPage = ({ onBack }) => {
                   <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">
                     {detail.label}
                   </p>
-                  <p className="text-base text-zinc-200">{detail.value}</p>
+                  <p className="text-base text-slate-800">{detail.value}</p>
                 </div>
                 <button
                   onClick={() => handleCopy(detail.value, detail.label)}
-                  className="p-2 text-zinc-500 hover:text-white transition-colors"
+                  className="p-2 text-zinc-500 hover:text-slate-900 transition-colors"
                 >
                   {copied === detail.label ? (
                     <Check className="w-5 h-5 text-green-500" />
@@ -215,11 +219,15 @@ const DepositPage = ({ onBack }) => {
         <div className="max-w-xl mx-auto">
           <button
               onClick={handleConfirmDeposit}
-              disabled={!amount || isNaN(amount) || parseFloat(amount) <= 0 || profileLoading}
+              disabled={!amount || isNaN(amount) || parseFloat(amount) <= 0 || profileLoading || isSubmitting}
               className="w-full bg-gradient-to-r from-black to-[#5b21b6] text-white font-bold py-5 rounded-[24px] shadow-xl hover:shadow-[#5b21b6]/30 transition-all active:scale-[0.98] disabled:opacity-30 disabled:grayscale flex items-center justify-center gap-2 group overflow-hidden relative"
           >
-              <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 pointer-events-none" />
-              I have made my deposit
+              {isSubmitting ? (
+                <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+              ) : (
+                <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 pointer-events-none" />
+              )}
+              {isSubmitting ? "Recording deposit..." : "I have made my deposit"}
           </button>
         </div>
       </div>
