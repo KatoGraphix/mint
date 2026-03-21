@@ -89,12 +89,13 @@ const DepositPage = ({ onBack }) => {
   };
 
   const bankDetails = [
-    { label: "Account Name", value: "Mint Wealth (Pty) Ltd" },
-    { label: "Bank", value: "Standard Bank" },
-    { label: "Account Number", value: "10192837465" },
-    { label: "Branch Code", value: "051001" },
-    { label: "Account Type", value: "Business Current" },
-    { label: "SWIFT Code", value: "SBZA ZAJJ" },
+    { label: "Account Holder", value: "MINT PLATFORMS (PTY) LTD" },
+    { label: "Bank", value: "STANDARD BANK" },
+    { label: "Account Type", value: "BUSINESS CURRENT ACCOUNT" },
+    { label: "Account Number", value: "02 154 470 0" },
+    { label: "Branch", value: "SANDTON CITY" },
+    { label: "Branch Code", value: "002064" },
+    { label: "SWIFT Code", value: "SBZAZAJJ" },
   ];
 
   return (
@@ -103,7 +104,7 @@ const DepositPage = ({ onBack }) => {
       <div className="fixed top-0 right-0 w-[500px] h-[500px] bg-violet-100/30 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2 -z-10" />
       <div className="fixed bottom-0 left-0 w-[400px] h-[400px] bg-purple-100/20 blur-[100px] rounded-full translate-y-1/2 -translate-x-1/2 -z-10" />
 
-      <div className="max-w-xl mx-auto px-6 pt-12 pb-32">
+      <div className="max-w-xl mx-auto px-6 pt-12 pb-40">
         {/* MINT Brand Header */}
         <div className="mb-8 text-center">
             <h1 className="text-sm font-bold tracking-[0.3em] uppercase opacity-40 mb-8" style={{ fontFamily: "'Future Earth Medium', sans-serif" }}>
@@ -217,7 +218,7 @@ const DepositPage = ({ onBack }) => {
         </div>
 
         {/* Sticky Action Button */}
-        <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white/80 to-transparent z-20">
+        <div className="fixed bottom-20 left-0 right-0 p-6 bg-gradient-to-t from-white via-white/80 to-transparent z-20">
           <div className="max-w-xl mx-auto">
             <button
                 onClick={handleConfirmDeposit}
@@ -253,4 +254,3 @@ const DepositPage = ({ onBack }) => {
 };
 
 export default DepositPage;
-
