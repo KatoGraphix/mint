@@ -138,8 +138,15 @@ export const useFinancialData = () => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") fetchData();
     };
+    const handleUpdate = () => {
+      fetchData();
+    };
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("financial-data-updated", handleUpdate);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("financial-data-updated", handleUpdate);
+    };
   }, [fetchData]);
 
   return { ...data, refetch: fetchData };

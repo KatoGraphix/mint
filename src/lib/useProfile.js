@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "./supabase";
 
 const emptyProfile = {
@@ -40,107 +40,106 @@ export const useProfile = () => {
   const [profile, setProfile] = useState(emptyProfile);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadProfile = useCallback(async () => {
+    try {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
 
-    const loadProfile = async () => {
-      try {
-        if (!supabase) {
-          if (isMounted) {
-            setLoading(false);
-          }
-          return;
-        }
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData?.user) {
+        setLoading(false);
+        return;
+      }
 
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userError || !userData?.user) {
-          if (isMounted) {
-            setLoading(false);
-          }
-          return;
-        }
+      const user = userData.user;
+      let rowData = null;
+      let rowError = null;
 
-        const user = userData.user;
-        let rowData = null;
-        let rowError = null;
+      const { data: d1, error: e1 } = await supabase
+        .from("profiles")
+        .select(
+          "id, first_name, last_name, email, avatar_url, phone_number, date_of_birth, gender, address, id_number, watchlist"
+        )
+        .eq("id", user.id)
+        .maybeSingle();
 
-        const { data: d1, error: e1 } = await supabase
+      // Fetch from wallets table as well
+      const { data: wData } = await supabase
+        .from("wallets")
+        .select("balance, mint_number")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const rowToBuild = d1 || { id: user.id, email: user.email };
+      if (wData) {
+        rowToBuild.wallets_balance = wData.balance;
+        rowToBuild.wallet_mint_number = wData.mint_number;
+      }
+
+      if (!e1) {
+        rowData = rowToBuild;
+      } else if (e1.message?.includes('mint_number')) {
+        const { data: d2, error: e2 } = await supabase
           .from("profiles")
           .select(
             "id, first_name, last_name, email, avatar_url, phone_number, date_of_birth, gender, address, id_number, watchlist"
           )
           .eq("id", user.id)
           .maybeSingle();
+        rowData = e2 ? null : d2;
+        rowError = e2;
+      } else {
+        rowError = e1;
+      }
 
-        // Fetch from wallets table as well
-        const { data: wData } = await supabase
-          .from("wallets")
-          .select("balance, mint_number")
-          .eq("user_id", user.id)
-          .maybeSingle();
+      const built = buildProfile({ user, row: rowError ? null : rowData });
+      setProfile(built);
+      setLoading(false);
 
-        const rowToBuild = d1 || { id: user.id, email: user.email };
-        if (wData) {
-          rowToBuild.wallets_balance = wData.balance;
-          rowToBuild.wallet_mint_number = wData.mint_number;
-        }
-
-        if (!e1) {
-          rowData = rowToBuild;
-        } else if (e1.message?.includes('mint_number')) {
-          const { data: d2, error: e2 } = await supabase
-            .from("profiles")
-            .select(
-              "id, first_name, last_name, email, avatar_url, phone_number, date_of_birth, gender, address, id_number, watchlist"
-            )
-            .eq("id", user.id)
-            .maybeSingle();
-          rowData = e2 ? null : d2;
-          rowError = e2;
-        } else {
-          rowError = e1;
-        }
-
-        if (isMounted) {
-          const built = buildProfile({ user, row: rowError ? null : rowData });
-          setProfile(built);
-          setLoading(false);
-
-          if (!built.mintNumber && user.id) {
-            try {
-              const { data: sess } = await supabase.auth.getSession();
-              const token = sess?.session?.access_token;
-              if (token) {
-                const resp = await fetch('/api/user/ensure-mint-number', {
-                  method: 'POST',
-                  headers: { Authorization: `Bearer ${token}` },
-                });
-                if (resp.ok) {
-                  const result = await resp.json();
-                  if (result.mint_number && isMounted) {
-                    setProfile(prev => ({ ...prev, mintNumber: result.mint_number }));
-                  }
-                }
+      if (!built.mintNumber && user.id) {
+        try {
+          const { data: sess } = await supabase.auth.getSession();
+          const token = sess?.session?.access_token;
+          if (token) {
+            const resp = await fetch('/api/user/ensure-mint-number', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (resp.ok) {
+              const result = await resp.json();
+              if (result.mint_number) {
+                setProfile(prev => ({ ...prev, mintNumber: result.mint_number }));
               }
-            } catch (mintErr) {
-              console.log('Mint number generation deferred');
             }
           }
-        }
-      } catch (error) {
-        console.error("Failed to load profile", error);
-        if (isMounted) {
-          setLoading(false);
+        } catch (mintErr) {
+          console.log('Mint number generation deferred');
         }
       }
-    };
-
-    loadProfile();
-
-    return () => {
-      isMounted = false;
-    };
+    } catch (error) {
+      console.error("Failed to load profile", error);
+      setLoading(false);
+    }
   }, []);
 
-  return { profile, loading, setProfile };
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  const refetch = useCallback(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      loadProfile();
+    };
+    window.addEventListener("profile-updated", handleProfileUpdate);
+    return () => window.removeEventListener("profile-updated", handleProfileUpdate);
+  }, [loadProfile]);
+
+  return { profile, loading, setProfile, refetch };
 };
+

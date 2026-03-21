@@ -125,16 +125,23 @@ const PaymentPage = ({
             strategy?.strategyId ||
             (isStrategyPurchase ? strategy?.id : null);
           const recordData = {
-            securityId: strategy?.id,
             symbol: strategy?.symbol || strategy?.short_name || "",
             name: strategy?.name || "",
             amount: overrideAmount || amount,
             baseAmount: baseAmount || amount,
-            strategyId: stratId,
             paymentReference,
             paymentMethod: finalMethod,
             ...(shareCount ? { shareCount: Number(shareCount) } : {}),
           };
+
+          if (isStrategyPurchase) {
+            recordData.strategyId = strategy?.id;
+          } else {
+            recordData.securityId = strategy?.id;
+          }
+
+          console.log("Recording investment with body:", recordData);
+
           const headers = { "Content-Type": "application/json" };
           if (token) headers.Authorization = `Bearer ${token}`;
 
@@ -258,6 +265,8 @@ const PaymentPage = ({
     try {
       const walletRef = `WALLET-${Date.now()}`;
       const recorded = await recordInvestment(walletRef, "wallet", totalToDeduct);
+      
+      console.log("Wallet payment API response:", recorded);
 
       if (!recorded.success) {
         if (recorded.error === "Insufficient funds") {
@@ -265,6 +274,11 @@ const PaymentPage = ({
         }
         throw new Error(recorded.error || "Failed to record investment");
       }
+
+      // Dispatch events for immediate UI updates
+      window.dispatchEvent(new Event("wallet-updated"));
+      window.dispatchEvent(new Event("profile-updated"));
+      window.dispatchEvent(new Event("financial-data-updated"));
 
       const finalNewBalance = recorded.newWalletBalance ?? (walletBalance - totalToDeduct);
       setWalletNewBalance(finalNewBalance);
