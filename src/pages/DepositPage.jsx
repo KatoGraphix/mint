@@ -39,7 +39,7 @@ const SuccessModal = ({ isOpen, onClose, reference }) => {
 };
 
 const DepositPage = ({ onBack }) => {
-  const { profile } = useProfile();
+  const { profile, loading: profileLoading } = useProfile();
   const [amount, setAmount] = useState("");
   const [copied, setCopied] = useState(null);
   const [reference, setReference] = useState("");
