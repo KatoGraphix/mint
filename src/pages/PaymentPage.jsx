@@ -16,6 +16,7 @@ const PaymentPage = ({
   onCancel,
   onOpenDeposit,
   initialMethod,
+  fees,
 }) => {
   const { profile } = useProfile();
   const [paymentStatus, setPaymentStatus] = useState(
@@ -246,16 +247,10 @@ const PaymentPage = ({
    * IMPORTANT: Fee Architecture Note
    * 
    * The 'amount' prop comes from InvestAmountPage (or StockBuyPage). 
-   * - For Paystack: amount already includes a 3.5% processing fee.
-   * - For Wallet: InvestAmountPage detects 'pendingPaymentMethod === wallet' 
-   *   and passes a total that includes Broker/Custody fees but 0.0% processing fee.
-   * 
-   * Therefore, we MUST add the 8% service fee here. Do not 'fix' this by 
-   * adding the 8% in the previous pages, or you will double-charge the user.
+   * It already includes all fees: 8% silent buffer, brokerage, custody, and transaction fees.
    */
   const handleWalletConfirm = async () => {
-    const serviceFeeRate = 0.08;
-    const totalToDeduct = amount * (1 + serviceFeeRate);
+    const totalToDeduct = amount;
 
     if (paymentStatus === "processing") return;
 
@@ -387,6 +382,7 @@ const PaymentPage = ({
       <WalletConfirmModal
         isOpen={walletConfirmOpen}
         amount={amount}
+        fees={fees}
         strategyName={strategy?.name}
         walletBalance={walletBalance}
         walletLoading={walletLoading}
@@ -619,6 +615,7 @@ const PaymentPage = ({
 const WalletConfirmModal = ({
   isOpen,
   amount,
+  fees,
   strategyName,
   walletBalance,
   walletLoading,
@@ -627,10 +624,13 @@ const WalletConfirmModal = ({
   onConfirm,
   onNavigateToDeposit,
 }) => {
-  const serviceFeeRate = 0.08;
-  const serviceFee = (amount || 0) * serviceFeeRate;
-  const totalToDeduct = (amount || 0) + serviceFee;
+  const totalToDeduct = amount;
   const hasEnoughFunds = walletBalance >= totalToDeduct;
+
+  const investment = fees?.bufferedBase || amount;
+  const brokerageFee = fees?.brokerAmount || 0;
+  const custodyFee = fees?.isinTotal || 0;
+  const transactionFee = fees?.transactionAmount || 0;
 
   const fmt = (v) =>
     `R${Number(v).toLocaleString("en-ZA", {
@@ -658,12 +658,20 @@ const WalletConfirmModal = ({
 
         <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 mb-5 space-y-2">
           <div className="flex justify-between text-xs">
-            <span className="text-slate-500">Base Investment</span>
-            <span className="font-semibold text-slate-900">{fmt(amount)}</span>
+            <span className="text-slate-500 font-medium">Investment</span>
+            <span className="font-semibold text-slate-900">{fmt(investment)}</span>
           </div>
           <div className="flex justify-between text-xs">
-            <span className="text-slate-500">Service Fee (8%)</span>
-            <span className="font-semibold text-slate-900">{fmt(serviceFee)}</span>
+            <span className="text-slate-500">Brokerage Fee (0.25%)</span>
+            <span className="font-semibold text-slate-900">{fmt(brokerageFee)}</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-slate-500">Custody Fee</span>
+            <span className="font-semibold text-slate-900">{fmt(custodyFee)}</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-slate-500">Transaction Fee (3.8%)</span>
+            <span className="font-semibold text-slate-900">{fmt(transactionFee)}</span>
           </div>
           <div className="border-t border-slate-200 mt-2 pt-2 flex justify-between text-sm">
             <span className="font-bold text-slate-700">Total to Deduct</span>

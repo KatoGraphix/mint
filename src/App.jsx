@@ -97,7 +97,8 @@ const App = () => {
   const [portfolioDeepLink, setPortfolioDeepLink] = useState(null);
   const [investmentAmount, setInvestmentAmount] = useState(0);
   const [baseInvestmentAmount, setBaseInvestmentAmount] = useState(0);
-  const [stockCheckout, setStockCheckout] = useState({ security: null, amount: 0, baseAmount: 0 });
+  const [investmentFees, setInvestmentFees] = useState(null);
+  const [stockCheckout, setStockCheckout] = useState({ security: null, amount: 0, baseAmount: 0, fees: null });
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
   const [pendingPaymentMethod, setPendingPaymentMethod] = useState(null);
@@ -1251,8 +1252,8 @@ const App = () => {
           security={selectedSecurity}
           paymentMethod={pendingPaymentMethod}
           onBack={goBack}
-          onContinue={(amount, security, baseAmount, shareCount) => {
-            setStockCheckout({ security, amount, baseAmount: baseAmount || amount, shareCount });
+          onContinue={(amount, security, baseAmount, shareCount, fees) => {
+            setStockCheckout({ security, amount, baseAmount: baseAmount || amount, shareCount, fees });
             setPendingGoalFlow({
               type: "stock",
               amount,
@@ -1385,6 +1386,7 @@ const App = () => {
           strategy={paymentItem}
           amount={stockCheckout.amount}
           baseAmount={stockCheckout.baseAmount}
+          fees={stockCheckout.fees}
           shareCount={stockCheckout.shareCount}
           initialMethod={pendingPaymentMethod}
           onOpenDeposit={() => navigateTo("deposit")}
@@ -1482,9 +1484,10 @@ const App = () => {
           onBack={goBack}
           strategy={selectedStrategy}
           paymentMethod={pendingPaymentMethod}
-          onContinue={(amount, baseAmount) => {
+          onContinue={(amount, baseAmount, shareCount, fees) => {
             setInvestmentAmount(amount);
             setBaseInvestmentAmount(baseAmount || amount);
+            setInvestmentFees(fees);
             setPendingGoalFlow({
               type: "strategy",
               amount,
@@ -1613,6 +1616,7 @@ const App = () => {
           strategy={selectedStrategy}
           amount={investmentAmount}
           baseAmount={baseInvestmentAmount}
+          fees={investmentFees}
           initialMethod={pendingPaymentMethod}
           onOpenDeposit={() => navigateTo("deposit")}
           onSuccess={async (response) => {

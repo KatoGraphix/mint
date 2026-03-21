@@ -48,7 +48,7 @@ const StockBuyPage = ({ security, onBack, onContinue, paymentMethod }) => {
     const transactionAmount = bufferedBase * TRANSACTION_FEE_RATE;
     const totalCost = bufferedBase + brokerAmount + isinTotal + transactionAmount;
 
-    return { brokerAmount, isinTotal, transactionAmount, totalCost };
+    return { brokerAmount, isinTotal, transactionAmount, totalCost, bufferedBase };
   }, [totalAmount, numAssets]);
 
   const isInvalid = !Number.isFinite(shares) || shares <= 0 || shares < minShares;
@@ -56,7 +56,7 @@ const StockBuyPage = ({ security, onBack, onContinue, paymentMethod }) => {
   const handleSubmit = (event) => {
     event.preventDefault();
     if (!security || isInvalid) return;
-    onContinue?.(fees.totalCost, security, totalAmount, validShares);
+    onContinue?.(fees.totalCost, security, totalAmount, validShares, fees);
   };
 
   return (

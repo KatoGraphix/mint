@@ -94,6 +94,7 @@ const InvestAmountPage = ({ onBack, strategy, onContinue, paymentMethod }) => {
       fees.totalCost,   // total cost including all fees
       amount,           // base investment amount before fees
       shareCount,       // number of shares if calculable
+      fees,             // detailed fee breakdown
     );
   };
 
