@@ -178,10 +178,30 @@ const SwipeableBalanceCard = ({
   useEffect(() => {
     if (!userId) return;
     const loadHoldings = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (token) {
+        try {
+          const response = await fetch("/api/user/holdings", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (response.ok) {
+            const payload = await response.json();
+            if (Array.isArray(payload?.holdings)) {
+              setDbData((prev) => ({ ...prev, holdings: payload.holdings }));
+              return;
+            }
+          }
+        } catch (apiError) {
+          console.error("Failed loading holdings from API:", apiError);
+        }
+      }
+
       const { data, error } = await supabase.rpc("get_user_holdings_v1", {
         p_user_id: userId,
       });
-      if (!error && data) {
+      if (!error && Array.isArray(data)) {
         setDbData((prev) => ({ ...prev, holdings: data }));
       }
     };
@@ -210,12 +230,12 @@ const SwipeableBalanceCard = ({
   }, [userId, activeTab]);
 
   const displayBalance = useMemo(() => {
-    return dbData.holdings.reduce((sum, h) => sum + Number(h.market_value), 0);
+    return dbData.holdings.reduce((sum, h) => sum + (Number(h.market_value) / 100), 0);
   }, [dbData.holdings]);
 
   const displayReturn = useMemo(() => {
     const totalCost = dbData.holdings.reduce(
-      (sum, h) => sum + Number(h.avg_fill || 0) * Number(h.quantity || 0),
+      (sum, h) => sum + ((Number(h.avg_fill || 0) * Number(h.quantity || 0)) / 100),
       0,
     );
     return displayBalance - totalCost;
@@ -223,7 +243,7 @@ const SwipeableBalanceCard = ({
 
   const totalCost = useMemo(() => {
     return dbData.holdings.reduce(
-      (sum, h) => sum + Number(h.avg_fill || 0) * Number(h.quantity || 0),
+      (sum, h) => sum + ((Number(h.avg_fill || 0) * Number(h.quantity || 0)) / 100),
       0,
     );
   }, [dbData.holdings]);
