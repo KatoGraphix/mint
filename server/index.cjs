@@ -794,6 +794,30 @@ function parseServices(value) {
   return [];
 }
 
+// Mint Mornings test endpoint
+app.post("/api/test/mint-mornings", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, error: "Email is required" });
+    
+    // We need a supabase client
+    const db = supabaseAdmin || supabase;
+    if (!db) return res.status(500).json({ success: false, error: "Server not configured with Supabase access" });
+    
+    const { sendTestEmail } = require('./mintMorningsCron.cjs');
+    const result = await sendTestEmail(db, email);
+    
+    if (result.success) {
+      res.json({ success: true, message: `Test email sent to ${email}`, details: result });
+    } else {
+      res.status(500).json({ success: false, error: result.error });
+    }
+  } catch (err) {
+    console.error("[mint-mornings-test] Error:", err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Sumsub API endpoints
 app.post("/api/sumsub/access-token", async (req, res) => {
   try {
