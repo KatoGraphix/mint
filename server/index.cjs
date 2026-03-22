@@ -39,6 +39,7 @@ const readEnv = (key) => process.env[key] || process.env[`VITE_${key}`];
 let _resendClient = null;
 function getResendClient() {
   if (!_resendClient && process.env.RESEND_API_KEY) {
+    console.log("[Server] Initializing Resend client...");
     _resendClient = new Resend(process.env.RESEND_API_KEY);
   }
   return _resendClient;

@@ -429,7 +429,7 @@ async function sendTestEmail(db, testEmail) {
   const { data: articles, error: articlesError } = await db
     .from('News_articles')
     .select('doc_id, title, source, channel, body_text, published_at, industries, markets')
-    .contains('content_types', ['ALLBRF'])
+    .filter('content_types', 'cs', '"ALLBRF"')
     .order('published_at', { ascending: false })
     .limit(1);
 
