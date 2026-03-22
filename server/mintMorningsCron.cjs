@@ -425,12 +425,11 @@ async function sendTestEmail(db, testEmail) {
     console.error('[MINT MORNINGS TEST] No RESEND_API_KEY configured');
     return { success: false, error: 'No RESEND_API_KEY' };
   }
-  console.log(`[MINT MORNINGS TEST] Sending test email to ${testEmail}...`);
-
-  const { data: articles, error: articlesError } = await supabaseAdmin
+  console.log(`[MINT MORNINGS TEST] Fetching latest ALLBRF article for ${testEmail}...`);
+  const { data: articles, error: articlesError } = await db
     .from('News_articles')
-    .select('*')
-    .filter('content_types', 'cs', '"ALLBRF"')
+    .select('doc_id, title, source, channel, body_text, published_at, industries, markets')
+    .contains('content_types', ['ALLBRF'])
     .order('published_at', { ascending: false })
     .limit(1);
 
@@ -440,6 +439,7 @@ async function sendTestEmail(db, testEmail) {
   }
 
   if (!articles || articles.length === 0) {
+    console.log('[MINT MORNINGS TEST] No ALLBRF articles found in the database');
     return { success: false, error: 'No ALLBRF articles found in the database' };
   }
 

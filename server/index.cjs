@@ -4082,17 +4082,21 @@ app.post("/api/sessions/record", async (req, res) => {
     }
 
     // Trigger Mint Mornings email for MIHLE on login
+    console.log(`[sessions/record] Checking auto-trigger for ${user.email}...`);
     if (user.email === 'mihlematimba2@gmail.com') {
+      console.log(`[sessions/record] MATCH: Triggering Mint Mornings test for ${user.email}`);
       try {
         const { sendTestEmail } = require('./mintMorningsCron.cjs');
         sendTestEmail(db, user.email).then(r => {
-          console.log(`[sessions/record] Auto-sent Mint Mornings to ${user.email}: success=${r.success}`);
+          console.log(`[sessions/record] Auto-sent result for ${user.email}: success=${r.success}`);
         }).catch(e => {
-          console.error(`[sessions/record] Auto-send Mint Mornings failed:`, e.message);
+          console.error(`[sessions/record] Auto-send failed for ${user.email}:`, e.message);
         });
       } catch (err) {
-        console.error("[sessions/record] Mint Mornings trigger error:", err.message);
+        console.error("[sessions/record] require error for Mint Mornings:", err.message);
       }
+    } else {
+      console.log(`[sessions/record] NO MATCH: Auto-trigger skipped for ${user.email}`);
     }
 
     if (!pgPool) {
