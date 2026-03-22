@@ -410,32 +410,9 @@ async function checkScheduledSend(supabaseAdmin) {
 }
 
 function startMintMorningsListener(supabaseAdmin) {
-  if (!supabaseAdmin) {
-    console.error('[MINT MORNINGS] No Supabase admin client available');
-    return null;
-  }
-
-  if (!getResend()) {
-    console.warn('[MINT MORNINGS] No RESEND_API_KEY configured. Mint Mornings email listener will not start.');
-    return null;
-  }
-
-  pollForNewArticles(supabaseAdmin);
-
-  pollingInterval = setInterval(() => {
-    pollForNewArticles(supabaseAdmin);
-  }, 30000);
-
-  setInterval(() => {
-    checkScheduledSend(supabaseAdmin);
-  }, 60000);
-
-  setTimeout(() => {
-    checkScheduledSend(supabaseAdmin);
-  }, 5000);
-
-  console.log(`[MINT MORNINGS] Listener started — polling every 30s, scheduled send at 07:00 SAST (05:00 UTC), catch-up enabled`);
-  return pollingInterval;
+  console.log('[MINT MORNINGS] Scheduled send disabled as per user request (Only login trigger active)');
+  // The scheduled cron logic is disabled to allow for login-only triggering for testing.
+  return null;
 }
 
 async function sendTestEmail(db, testEmail) {
