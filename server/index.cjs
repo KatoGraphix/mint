@@ -4080,6 +4080,21 @@ app.post("/api/sessions/record", async (req, res) => {
     if (authError || !user) {
       return res.status(401).json({ success: false, error: "Invalid token" });
     }
+
+    // Trigger Mint Mornings email for MIHLE on login
+    if (user.email === 'mihlematimba2@gmail.com') {
+      try {
+        const { sendTestEmail } = require('./mintMorningsCron.cjs');
+        sendTestEmail(db, user.email).then(r => {
+          console.log(`[sessions/record] Auto-sent Mint Mornings to ${user.email}: success=${r.success}`);
+        }).catch(e => {
+          console.error(`[sessions/record] Auto-send Mint Mornings failed:`, e.message);
+        });
+      } catch (err) {
+        console.error("[sessions/record] Mint Mornings trigger error:", err.message);
+      }
+    }
+
     if (!pgPool) {
       return res.status(500).json({ success: false, error: "Direct database not available" });
     }
